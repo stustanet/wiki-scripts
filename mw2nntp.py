@@ -27,6 +27,7 @@ def wrap(text, width):
 def scrape(site, path):
 	page = site.Pages[path.name]
 	content = page.edit()
+	content = content.replace("{{!}}", "")
 	content = content.split("\n}}\n")
 
 	date = False
