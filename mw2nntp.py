@@ -62,9 +62,11 @@ def scrape(site, path):
 				i = 0
 			startdate = date[i+1].split('=')[1]
 			enddate = date[i+2].split('=')[1]
-			loc = date[i+4].split('=')
-			if len(loc) > 1:
-				location = loc[1]
+			# location optional
+			if len(date) > i + 4:
+				loc = date[i+4].split('=')
+				if len(loc) > 1:
+					location = loc[1]
 			date = True
 
 	if len(content) > 1:
