@@ -37,7 +37,8 @@ def scrape(site, path):
 	ssn = False
 	for item in content:
 		if item.find("{{News") != -1 or \
-				item.find("{{StuStaNet-News") != -1:
+				item.find("{{StuStaNet-News") != -1 or \
+				item.find("{{HSH-News") != -1:
 			if item.find("{{StuStaNet-News") != -1:
 				ssn = True
 			item = item.strip()
