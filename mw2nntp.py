@@ -32,9 +32,10 @@ def scrape(site, path):
     content = content.replace("{{!}}", "")
     content = content.split("\n}}\n")
 
+    # set default values since they are not enforced by mw
     postdate = time.localtime()
-    author = ""
-    title = ""
+    author = "Infoseite"
+    title = "Neuigkeiten"
     summary = ""
 
     date = False
