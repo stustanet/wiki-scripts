@@ -5,11 +5,13 @@
 
 import mwclient
 from BeautifulSoup import BeautifulSoup
+
+import re
+import string
+import sys
 import time
 from tempfile import NamedTemporaryFile
 from nntplib import NNTP
-import sys
-import string
 
 # helper for line wrapping
 def wrap(text, width):
@@ -25,59 +27,64 @@ def wrap(text, width):
 
 # scrape news content
 def scrape(site, path):
-	page = site.Pages[path.name]
-	content = page.edit()
-	content = content.replace("{{!}}", "")
-	content = content.split("\n}}\n")
+    page = site.Pages[path.name]
+    content = page.edit()
+    content = content.replace("{{!}}", "")
+    content = content.split("\n}}\n")
 
-	date = False
-	startdate = ""
-	enddate = ""
-	location = ""
-	ssn = False
-	for item in content:
-		if item.find("{{News") != -1 or \
-				item.find("{{StuStaNet-News") != -1 or \
-				item.find("{{HSH-News") != -1:
-			if item.find("{{StuStaNet-News") != -1:
-				ssn = True
-			item = item.strip()
-			news = item.splitlines()
-			postdate = news[1].split('=')[1]
-			postdate = time.strptime(postdate, "%Y/%m/%d %H:%M:%S")
-			title = news[2].split('=')[1]
-			author = news[3].split('=')[1]
-			# ignore picture
-			if news[4].find("|Zusammenfassung=") == 0:
-				summary = string.join(news[4:], " ")
-			else:
-				summary = string.join(news[5:], " ")
-			summary = summary.split('=')[1]
-			summary = wrap(summary, 72)
-		if item.find("{{Termin") != -1:
-			item = item.strip()
-			date = item.splitlines()
-			if date[1].find("|Titel=") == 0:
-				i = 1
-			else:
-				i = 0
-			startdate = date[i+1].split('=')[1]
-			enddate = date[i+2].split('=')[1]
-			# location optional
-			if len(date) > i + 4:
-				loc = date[i+4].split('=')
-				if len(loc) > 1:
-					location = loc[1]
-			date = True
+    postdate = time.localtime()
+    author = ""
+    title = ""
+    summary = ""
 
-	if len(content) > 1:
-		html = content[len(content) - 1]
-	else:
-		html = ""
-	text = ''.join(BeautifulSoup(html).findAll(text=True)).strip()
-	text = wrap(text, 72)
-	return (title, postdate, author, date, startdate, enddate, location, \
-			summary, text, ssn)
+    date = False
+    startdate = ""
+    enddate = ""
+    location = ""
+    ssn = False
+    for item in content:
+        if item.startswith("{{StuStaNet-News"):
+            ssn = True
+        if re.search("^{{.*News\n", item):
+            item = item.strip()
+            news = item.split("\n|")
+
+            for record in news[1:]:
+                name, value = record.split("=")
+                if name == "Datum":
+                    postdate = time.strptime(value, "%Y/%m/%d %H:%M:%S")
+                if name == "Titel":
+                    title = value
+                if name == "Autor":
+                    author = value
+                if name == "Zusammenfassung":
+                    summary = ''.join(BeautifulSoup(value).findAll(text=True)).strip()
+                    summary = wrap(summary, 72)
+
+        if item.find("{{Termin") != -1:
+            item = item.strip()
+            date = item.splitlines()
+            if date[1].find("|Titel=") == 0:
+                i = 1
+            else:
+                i = 0
+            startdate = date[i+1].split('=')[1]
+            enddate = date[i+2].split('=')[1]
+            # location optional
+            if len(date) > i + 4:
+                loc = date[i+4].split('=')
+                if len(loc) > 1:
+                    location = loc[1]
+            date = True
+
+    if len(content) > 1:
+        html = content[len(content) - 1]
+    else:
+        html = ""
+    text = ''.join(BeautifulSoup(html).findAll(text=True)).strip()
+    text = wrap(text, 72)
+    return (title, postdate, author, date, startdate, enddate, location, \
+            summary, text, ssn)
 
 
 # write posting to tmpfile
@@ -99,6 +106,7 @@ def write(content):
 		tmp.write("Zusammenfassung:\n")
 		tmp.write(content[7].encode('utf-8'))
 		if content[3]:
+			tmp.write("\n")
 			tmp.write("\n")
 			tmp.write(content[4].encode('utf-8'))
 			tmp.write(" bis ")
