@@ -10,6 +10,7 @@ import re
 import string
 import sys
 import time
+import urllib
 from tempfile import NamedTemporaryFile
 from nntplib import NNTP
 
@@ -117,9 +118,9 @@ def write(content):
 		tmp.write("\n\n")
 		tmp.write(content[8].encode('utf-8'))
 		tmp.write("\n\n\n")
-		tmp.write("Quelle: http://wiki.stusta.mhn.de/Aktuelles:" \
-				+ string.replace(title, " ", "_"))
-		tmp.write("\n\n-- \nMehr Informationen: http://info.stusta.mhn.de\n")
+		tmp.write("Quelle: https://wiki.stusta.mhn.de/Aktuelles:" \
+				+ urllib.quote_plus(title))
+		tmp.write("\n\n-- \nMehr Informationen: https://info.stusta.mhn.de\n")
 	finally:
 		return tmp
 
