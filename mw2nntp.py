@@ -167,28 +167,32 @@ def send_mail(c, body):
 def main(argv=sys.argv):
     # collect pages
     site = mwclient.Site('wiki.stusta.mhn.de', path='/')
-    category = site.Pages['Category:News']
 
-    for page in category:
-        c = scrape(site, page)
-        # dispatch news to ng if posted during previous full hour
-        interval = 60*60
-        newstime = int(time.mktime(c[1]))
-        curtime = int(time.time() - interval)
-        if curtime / interval == newstime / interval:
-            body = write_body(c)
-            send_mail(c, body)
+    categories = []
+    categories.append(site.Pages['Category:News'])
+    categories.append(site.Pages['Category:StuStaNet-News'])
 
-            # create ng header and append text
-            posting = write_ng(c)
-            body.seek(0)
-            shutil.copyfileobj(body, posting)
-            send_ng(posting)
+    for category in categories:
+        for page in category:
+            c = scrape(site, page)
+            # dispatch news to ng if posted during previous full hour
+            interval = 60*60
+            newstime = int(time.mktime(c[1]))
+            curtime = int(time.time() - interval)
+            if curtime / interval == newstime / interval:
+                body = write_body(c)
+                send_mail(c, body)
 
-            #posting.seek(0)
-            #print("\n\nPOSTING")
-            #for line in posting:
-            #    sys.stdout.write(line)
+                # create ng header and append text
+                posting = write_ng(c)
+                body.seek(0)
+                shutil.copyfileobj(body, posting)
+                send_ng(posting)
+
+                #posting.seek(0)
+                #print("\n\nPOSTING")
+                #for line in posting:
+                #    sys.stdout.write(line)
 
 
 if __name__ == '__main__':
