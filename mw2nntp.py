@@ -8,6 +8,7 @@ from BeautifulSoup import BeautifulSoup
 
 import smtplib
 from email.mime.text import MIMEText
+from email.Utils import formatdate
 
 import re
 import shutil
@@ -159,6 +160,7 @@ def send_mail(c, body):
     msg['Subject'] = c[0]
     msg['From'] = src
     msg['To'] = dest
+    msg['Date']    = formatdate(localtime=True)
     s = smtplib.SMTP('mail.stusta.mhn.de')
     s.sendmail(src, [dest], msg.as_string())
     s.quit()
