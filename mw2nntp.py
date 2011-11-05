@@ -156,7 +156,7 @@ def send_mail(c, body):
     dest = "admins@stusta.mhn.de"
 
     body.seek(0)
-    msg = MIMEText(body.read())
+    msg = MIMEText(body.read(), _charset="UTF-8")
     msg['Subject'] = c[0]
     msg['From'] = src
     msg['To'] = dest
