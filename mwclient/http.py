@@ -84,17 +84,17 @@ class HTTPPersistentConnection(object):
 			headers['Cookie'] = self.cookies[host].get_cookie_header()
 		if issubclass(data.__class__, upload.Upload):
 			headers['Content-Type'] = data.content_type
-			headers['Content-Length'] = data.length;
+			headers['Content-Length'] = str(data.length)
 		elif data:
-			headers['Content-Length'] = len(data)
+			headers['Content-Length'] = str(len(data))
 			
 		if _headers: headers.update(_headers)
 		
 		try:
 			self._conn.request(method, path, headers = headers)
 			if issubclass(data.__class__, upload.Upload):
-				for str in data:
-					self._conn.send(str)
+				for s in data:
+					self._conn.send(s)
 			elif data:
 				self._conn.send(data)
 			

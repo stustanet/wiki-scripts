@@ -1,4 +1,4 @@
-This files describes mwclient-0.6.4. The latest version is available in the 
+This files describes mwclient-0.6.5. The latest version is available in the 
 subversion repository <https://mwclient.svn.sourceforge.net/svnroot/mwclient>
 and also browsable <http://mwclient.svn.sourceforge.net/viewvc/mwclient/>.
 
@@ -65,7 +65,7 @@ for category in site.allcategories():
 	print category
 
 == License ==
- Copyright (c) 2006-2009 Bryan Tong Minh
+ Copyright (c) 2006-2011 Bryan Tong Minh
  
  Permission is hereby granted, free of charge, to any person
  obtaining a copy of this software and associated documentation

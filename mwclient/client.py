@@ -1,4 +1,4 @@
-__ver__ = '0.6.4'
+__ver__ = '0.6.5'
 
 import urllib, urlparse
 import time, random
@@ -92,7 +92,8 @@ class Site(object):
 				self.site_init()
 			except errors.APIError, e:
 				# Private wiki, do init after login
-				if e[0] != u'unknown_action': raise
+				if e[0] not in (u'unknown_action', u'readapidenied'): 
+					raise
 				
 			
 	def site_init(self):
@@ -113,21 +114,13 @@ class Site(object):
 					if s[i] < '0' or s[i] > '9':
 						break
 					i += 1
-				return int(s[:i]), s[i:]
-			# FIXME! Fix those awful two hacks
-			if len(version) == 2:
-				# An alpha version
-				self.version = (int(version[0]), ) + split_num(version[1])
-			elif len(version) == 3 and 'rc' in version[2]:
-				# Release candidate
-				self.version = (int(version[0]), int(version[1]), version[2])
-			elif len(version) == 3:
-				# patched for debian version
-				third = version[2]
-				elems = third.split('-')
-				major = int(elems[0])
-				self.version = (int(version[0]), int(version[1]), major)
-			else:
+				if s[i:]:
+					return (int(s[:i]), s[i:], )
+				else:
+					return (int(s[:i]), )
+			self.version = sum((split_num(s) for s in version), ())
+			
+			if len(self.version) < 2:
 				raise errors.MediaWikiVersionError('Unknown MediaWiki %s' % '.'.join(version))
 		else:
 			raise errors.MediaWikiVersionError('Unknown generator %s' % self.site['generator'])
@@ -382,7 +375,7 @@ class Site(object):
 			predata['session_key'] = session_key 
 		
 		if file is None:
-			postdata = predata
+			postdata = self._query_string(predata)
 		else:			
 			if type(file) is str:
 				file_size = len(file)
