@@ -12,10 +12,17 @@ import lxml.html
 
 anzahl = 8
 
-# Get information from mvg-Website
+# Fetch from mvg-live website
 abfahrten = []
 html = lxml.html.fromstring(urllib.urlopen('http://www.mvg-live.de/ims/dfiStaticAuswahl.svc?haltestelle=Studentenstadt', proxies={'http': 'http://proxy.stusta.mhn.de:3128'}).read().decode('iso8859-1'))
-table = html.find_class('departureView')[0]
+departureView = html.find_class('departureView')
+
+# Exit if fetch failed
+if len(departureView) < 1:
+    exit(1)
+
+# Extract info
+table = departureView[0]
 for row in  table.cssselect("tr"):
     if row.find_class('rowOdd') or row.find_class('rowEven'):
         line = row.find_class('lineColumn')[0].text_content()
