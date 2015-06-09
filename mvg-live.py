@@ -14,7 +14,10 @@ anzahl = 8
 
 # Fetch from mvg-live website
 abfahrten = []
-html = lxml.html.fromstring(urllib.urlopen('http://www.mvg-live.de/ims/dfiStaticAuswahl.svc?haltestelle=Studentenstadt', proxies={'http': 'http://proxy.stusta.mhn.de:3128'}).read().decode('iso8859-1'))
+try:
+    html = lxml.html.fromstring(urllib.urlopen('http://www.mvg-live.de/ims/dfiStaticAuswahl.svc?haltestelle=Studentenstadt', proxies={'http': 'http://proxy.stusta.mhn.de:3128'}).read().decode('iso8859-1'))
+except: 
+    exit(1)
 departureView = html.find_class('departureView')
 
 # Exit if fetch failed
