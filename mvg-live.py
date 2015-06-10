@@ -16,7 +16,7 @@ anzahl = 8
 abfahrten = []
 try:
     html = lxml.html.fromstring(urllib.urlopen('http://www.mvg-live.de/ims/dfiStaticAuswahl.svc?haltestelle=Studentenstadt', proxies={'http': 'http://proxy.stusta.mhn.de:3128'}).read().decode('iso8859-1'))
-except: 
+except IOError: 
     exit(1)
 departureView = html.find_class('departureView')
 
