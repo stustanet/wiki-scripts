@@ -1,0 +1,9 @@
+[mwclient]
+schema=https
+site=wiki.stusta.de
+path=/
+user=Sprechstundensystem-Bot
+pass=nice_try
+
+[sss]
+url=https://sprechstunden.stusta.de/appointments.json
