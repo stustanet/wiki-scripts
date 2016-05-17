@@ -42,10 +42,8 @@ site = mwclient.Site((cfg('mwclient', 'schema'), cfg('mwclient', 'site')), path=
 site.login(cfg('mwclient', 'user'), cfg('mwclient', 'pass'))
 
 page = site.Pages['Vorlage:Mensa-Heute']
-page.edit()
 
 text = ''
-
 if speisen:
     for x in speisen:
         text = text + '%s: %s' % (cgi.escape(x), cgi.escape(speisen[x]))
