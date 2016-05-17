@@ -1,0 +1,10 @@
+[mwclient]
+schema=https
+site=wiki.stusta.de
+path=/
+user=Mensa-Bot
+pass=nice_try
+
+[mensa]
+proxy=http://proxy.stusta.mhn.de:3128
+url=http://www.studentenwerk-muenchen.de/mensa/speiseplan/speiseplan_422_-de.html
