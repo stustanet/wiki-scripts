@@ -1,7 +1,14 @@
 #!/usr/bin/env python
-# B. Hof <hof@stusta.net>, 10/2010
 # Posts semantic mediawiki news entries via NNTP.  To be run with minimal
 # privileges shortly after every full hour
+
+# Initial version, 10/2010:
+#     B. Hof <hof@stusta.net>
+# Made a little bit less unbelievably insane, 04/2012:
+#     B. Braun <benjamin.braun@stusta.net>,
+#     T. Klenze <tobias.klenze@stusta.net>
+# Fixed stuff, 06/2016:
+#     J. Schmidt <js@stusta.net>
 
 import mwclient
 from BeautifulSoup import BeautifulSoup
@@ -9,6 +16,7 @@ from BeautifulSoup import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 from email.Utils import formatdate
+from email.header import Header
 
 import re
 import shutil
@@ -33,25 +41,33 @@ def wrap(text, width):
 
 # scrape news content
 def scrape(site, path):
+    c = {} # return dictionary object
     page = site.Pages[path.name]
-    content = page.edit()
+
+    content = page.text()
     content = content.replace("{{!}}", "")
     content = content.split("\n}}\n")
 
     # set default values since they are not enforced by mw
-    postdate = time.localtime()
-    author = "Infoseite"
-    title = "Neuigkeiten"
-    summary = ""
+    c['postdate'] = time.gmtime()
+    c['author'] = "Infoseite"
+    c['summary'] = ""
 
-    date = False
-    startdate = ""
-    enddate = ""
-    location = ""
-    ssn = False
+    c['isdate'] = False # In case this is also a "Termin"
+    c['startdate'] = ""
+    c['enddate'] = ""
+    c['location'] = ""
+    c['isssn'] = False # Will be set to true if it is posted to the StuStaNet section
+    c['isnews'] = False # Will be set to trueif it is posted to the general news section
+
+    c['displaytitle'] = path.name.encode('utf-8') # Ommits index at the end (Adminrat im April 2 -> Adminrat im April) 
+    c['title'] = path.normalize_title(path.name).encode('utf-8') # URL encoded
+
     for item in content:
         if item.startswith("{{StuStaNet-News"):
-            ssn = True
+            c['isssn'] = True
+        if item.startswith("{{News"):
+            c['isnews'] = True
         if re.search("^{{.*News\n", item):
             item = item.strip()
             news = item.split("\n|")
@@ -59,74 +75,93 @@ def scrape(site, path):
             for record in news[1:]:
                 name, value = record.split("=")
                 if name == "Datum":
-                    postdate = time.strptime(value, "%Y/%m/%d %H:%M:%S")
+                    c['postdate'] = time.strptime(value, "%Y/%m/%d %H:%M:%S")
                 if name == "Titel":
-                    title = value
+                    c['displaytitle'] = value
                 if name == "Autor":
-                    author = value
+                    c['author'] = value
+                if name == "auf Infoseite":
+                    c['isnews'] = value;
                 if name == "Zusammenfassung":
-                    summary = ''.join(BeautifulSoup(value).findAll(text=True)).strip()
-                    summary = wrap(summary, 72)
+                    c['summary'] = ''.join(BeautifulSoup(value).findAll(text=True)).strip()
+                    c['summary'] = wrap(c['summary'], 72)
 
         if item.find("{{Termin") != -1:
             item = item.strip()
-            date = item.splitlines()
-            if date[1].find("|Titel=") == 0:
+            dates = item.splitlines()
+            if dates[1].find("|Titel=") == 0:
                 i = 1
             else:
                 i = 0
-            startdate = date[i+1].split('=')[1]
-            enddate = date[i+2].split('=')[1]
+            c['startdate'] = dates[i+1].split('=')[1]
+            c['enddate'] = dates[i+2].split('=')[1]
             # location optional
-            if len(date) > i + 4:
-                loc = date[i+4].split('=')
+            if len(dates) > i + 4:
+                loc = dates[i+4].split('=')
                 if len(loc) > 1:
-                    location = loc[1]
-            date = True
+                    c['location'] = loc[1]
+            c['isdate'] = True
 
     if len(content) > 1:
         html = content[len(content) - 1]
     else:
         html = ""
-    text = ''.join(BeautifulSoup(html).findAll(text=True)).strip()
-    text = wrap(text, 72)
-    return (title, postdate, author, date, startdate, enddate, location, \
-            summary, text, ssn)
+    c['text'] = ''.join(BeautifulSoup(html).findAll(text=True)).strip()
+    c['text'] = wrap(c['text'], 72)
+
+    for key, value in c.iteritems():
+        if key != 'text' and key != 'postdate' and key != 'summary' and key!= 'isdate' and key!='isssn' and key!='isnews':
+            tmp = c[key]
+            c[key] = c[key].replace("\n", "")
+            c[key] = c[key].replace("\r", "")
+            if (c[key] != tmp):
+                print "WARNING: IT IS POSSIBLE THAT SOMEONE TRIED SOMETHING NASTY! Replaced " + tmp + " by " + c[key]
+
+    return c
 
 
 # write body of posting to tmpfile
-def write_body(content):
+def write_body(c):
     tmp = NamedTemporaryFile(mode='w+b')
     tmp.write("Zusammenfassung:\n")
-    tmp.write(content[7].encode('utf-8'))
-    if content[3]:
+    tmp.write(c['summary'].encode('utf-8'))
+    if c['isdate']:
         tmp.write("\n")
         tmp.write("\n")
-        tmp.write(content[4].encode('utf-8'))
+        tmp.write(c['startdate'].encode('utf-8'))
         tmp.write(" bis ")
-        tmp.write(content[5].encode('utf-8'))
+        tmp.write(c['enddate'].encode('utf-8'))
         tmp.write("\n")
-        tmp.write(content[6].encode('utf-8'))
+        tmp.write(c['location'].encode('utf-8'))
     tmp.write("\n\n")
-    tmp.write(content[8].encode('utf-8'))
+    tmp.write(c['text'].encode('utf-8'))
     tmp.write("\n\n\n")
-    tmp.write("Quelle: https://wiki.stusta.mhn.de/Aktuelles:" \
-            + urllib.quote_plus(content[0]))
+    tmp.write("Quelle: https://wiki.stusta.mhn.de/" \
+            + urllib.quote_plus(c['title']))
     tmp.write("\n\n-- \nMehr Informationen: https://info.stusta.mhn.de\n")
     return tmp
 
 
 # write ng header
-def write_ng(content):
+def write_ng(c):
     tmp = NamedTemporaryFile(mode='w+b')
-    tmp.write("From: " + content[2].encode('utf-8') + " <nobody@example.com>\n")
-    title = content[0].encode('utf-8')
-    tmp.write("Subject: " + title + "\n")
-    if (content[9]) :
+    headerfrom = Header(c['author'],"utf-8",76,"From")
+    headerfrom.append("<no-reply@stusta.mhn.de>","ascii")
+    tmp.write("From: " + headerfrom.encode() + "\n")
+    tmp.write("Subject: " + Header(c['displaytitle'],"utf-8",76,"Subject").encode() + "\n")
+
+    if (c['isssn'] and c['isnews']) :
+        tmp.write("Newsgroups: local.netz.info,local.ankuendigungen\n")
+    if (c['isssn'] and not c['isnews']):
         tmp.write("Newsgroups: local.netz.info\n")
-    else :
+    if (not c['isssn'] and c['isnews']):
         tmp.write("Newsgroups: local.ankuendigungen\n")
+    if (not c['isssn'] and not c['isnews']):
+        print "Well, this is kinda strange... it should never happen \
+        that we dont post to either newsgroup:)"
+
     #tmp.write("Newsgroups: local.test\n")
+
     tmp.write("X-Newsreader: mw2nntp.py by StuStaNet nntp fan club\n")
     tmp.write("Content-Type: text/plain; charset=UTF-8\n")
     tmp.write("Content-Transfer-Encoding: 8bit\n")
@@ -147,17 +182,18 @@ def send_ng(f):
     f.close()
 
 
-# send mail to admin list
+# send mail to, admin list
 def send_mail(c, body):
-    if not c[9]:
+    if not c['isssn']:
         return
 
-    src = c[2] + " <nobody@example.com>"
-    dest = "admins@stusta.mhn.de"
+    src = c['author'] + " <no-reply@mail.stusta.mhn.de>"
+
+    dest = "announce@lists.stusta.mhn.de"
 
     body.seek(0)
     msg = MIMEText(body.read(), _charset="UTF-8")
-    msg['Subject'] = c[0]
+    msg['Subject'] = c['displaytitle']
     msg['From'] = src
     msg['To'] = dest
     msg['Date']    = formatdate(localtime=True)
@@ -168,34 +204,34 @@ def send_mail(c, body):
 
 def main(argv=sys.argv):
     # collect pages
-    site = mwclient.Site('wiki.stusta.mhn.de', path='/')
+    site = mwclient.Site('wiki.stusta.de', path='/')
 
     categories = []
-    categories.append(site.Pages['Category:News'])
-    categories.append(site.Pages['Category:StuStaNet-News'])
+    categories.append(site.Pages['Kategorie:News'])
+    categories.append(site.Pages['Kategorie:StuStaNet-News'])
+
+    pages = {}
 
     for category in categories:
         for page in category:
-            c = scrape(site, page)
-            # dispatch news to ng if posted during previous full hour
-            interval = 60*60
-            newstime = int(time.mktime(c[1]))
-            curtime = int(time.time() - interval)
-            if curtime / interval == newstime / interval:
-                body = write_body(c)
-                send_mail(c, body)
+            pages[page.name] = page
 
-                # create ng header and append text
-                posting = write_ng(c)
-                body.seek(0)
-                shutil.copyfileobj(body, posting)
-                send_ng(posting)
+    interval = 60*60
+    curtime = int(time.time() - interval)
 
-                #posting.seek(0)
-                #print("\n\nPOSTING")
-                #for line in posting:
-                #    sys.stdout.write(line)
+    for (pagetitle,page) in pages.iteritems(): # "guranteed" to be unique
+        c = scrape(site, page)
+        # dispatch news to ng if posted during previous full hour
+        newstime = int(time.mktime(c['postdate']))
+        if curtime / interval == newstime / interval:
+            body = write_body(c)
+            send_mail(c, body)
 
+            # create ng header and append text
+            posting = write_ng(c)
+            body.seek(0)
+            shutil.copyfileobj(body, posting)
+            send_ng(posting)
 
 if __name__ == '__main__':
     sys.exit(main())
