@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import date
 import json
 import locale
+import os
 
 wikiText_de = '''
 |style="vertical-align:bottom;"| %s
@@ -33,7 +34,7 @@ def wikifyDate(obj, wikiText):
 	return text
 
 config = ConfigParser.RawConfigParser()
-config.read('sss.ini')
+config.read(os.path.dirname(os.path.realpath(__file__)) + '/sss.ini')
 cfg = config.get
 
 opener = urllib2.build_opener()
