@@ -136,9 +136,9 @@ def write_body(c):
     tmp.write("\n\n")
     tmp.write(c['text'].encode('utf-8'))
     tmp.write("\n\n\n")
-    tmp.write("Quelle: https://wiki.stusta.mhn.de/" \
+    tmp.write("Quelle: https://wiki.stusta.de/" \
             + urllib.quote_plus(c['title']))
-    tmp.write("\n\n-- \nMehr Informationen: https://info.stusta.mhn.de\n")
+    tmp.write("\n\n-- \nMehr Informationen: https://info.stusta.de\n")
     return tmp
 
 
@@ -146,7 +146,7 @@ def write_body(c):
 def write_ng(c):
     tmp = NamedTemporaryFile(mode='w+b')
     headerfrom = Header(c['author'],"utf-8",76,"From")
-    headerfrom.append("<no-reply@stusta.mhn.de>","ascii")
+    headerfrom.append("<no-reply@stusta.de>","ascii")
     tmp.write("From: " + headerfrom.encode() + "\n")
     tmp.write("Subject: " + Header(c['displaytitle'],"utf-8",76,"Subject").encode() + "\n")
 
@@ -171,7 +171,7 @@ def write_ng(c):
 
 # dispatch posting to ng server
 def send_ng(f):
-    s = NNTP('news.stusta.mhn.de')
+    s = NNTP('news.stusta.de')
     #s.set_debuglevel(1)
     f.seek(0)
     try:
@@ -187,9 +187,9 @@ def send_mail(c, body):
     if not c['isssn']:
         return
 
-    src = c['author'] + " <no-reply@mail.stusta.mhn.de>"
+    src = c['author'] + " <no-reply@mail.stusta.de>"
 
-    dest = "announce@lists.stusta.mhn.de"
+    dest = "announce@lists.stusta.de"
 
     body.seek(0)
     msg = MIMEText(body.read(), _charset="UTF-8")
@@ -197,7 +197,7 @@ def send_mail(c, body):
     msg['From'] = src
     msg['To'] = dest
     msg['Date']    = formatdate(localtime=True)
-    s = smtplib.SMTP('mail.stusta.mhn.de')
+    s = smtplib.SMTP('mail.stusta.de')
     s.sendmail(src, [dest], msg.as_string())
     s.quit()
 
