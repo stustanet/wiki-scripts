@@ -1,0 +1,13 @@
+[env]
+proxy=http://proxy.stusta.de:3128
+
+[wiki]
+dir=/var/www/mediawiki/
+skip_extensions=GroupsSidebar,Lockdown
+check_url=http://localhost/Hauptseite
+
+[backup]
+dir=/somewhere/backup/
+db_name=mediawiki
+db_user=backup
+db_pass=verysicher
