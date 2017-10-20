@@ -70,4 +70,8 @@ site.login(mw_user, mw_pass)
 page = site.Pages['Vorlage:MVV-Abfahrt']
 page.edit()
 
-page.save(wikistring , summary = 'MVV-Abfahrt' )
+try:
+    page.save(wikistring , summary = 'MVV-Abfahrt' )
+except mwclient.errors.APIError:
+    exit(1)
+
