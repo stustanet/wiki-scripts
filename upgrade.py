@@ -144,9 +144,10 @@ def update_extensions():
 	if ext in skip_extensions:
 		info('Skipping '+ext)
 		continue
-	if
-	info('Updating '+ext)
 	ext_dir = wiki_dir+'extensions/'+ext+'/'
+	if os.path.isfile(ext_dir+'composer.json'):
+		info('Skipping Composer Extension: '+ext)
+	info('Updating '+ext)
 	ret = run_cmd('git pull', cwd=ext_dir)
 	if ret != 0:
 		warn('git pull failed for extension '+ext)
