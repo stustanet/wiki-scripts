@@ -218,12 +218,11 @@ def main(argv=sys.argv):
 
     interval = 60*60
     curtime = int(time.time() - interval)
-
     for (pagetitle,page) in pages.iteritems(): # "guranteed" to be unique
         c = scrape(site, page)
         # dispatch news to ng if posted during previous full hour
         newstime = int(time.mktime(c['postdate']))
-        if curtime / interval == newstime / interval:
+        if int(curtime / interval) == int(newstime / interval):
             body = write_body(c)
             send_mail(c, body)
 
