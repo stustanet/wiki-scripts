@@ -9,6 +9,8 @@
 #     T. Klenze <tobias.klenze@stusta.net>
 # Fixed stuff, 06/2016:
 #     J. Schmidt <js@stusta.net>
+# Fixed AM/PM handling, 02/2017
+#     C. Winter <christian.winter@stusta.net>
 
 import mwclient
 from BeautifulSoup import BeautifulSoup
@@ -75,7 +77,10 @@ def scrape(site, path):
             for record in news[1:]:
                 name, value = record.split("=")
                 if name == "Datum":
-                    c['postdate'] = time.strptime(value, "%Y/%m/%d %H:%M:%S")
+                    if re.search("(.*)[AP]M(.*)", value):
+                        c['postdate'] = time.strptime(value, "%Y/%m/%d %I:%M:%S %p")
+                    else:
+                        c['postdate'] = time.strptime(value, "%Y/%m/%d %H:%M:%S")
                 if name == "Titel":
                     c['displaytitle'] = value
                 if name == "Autor":
