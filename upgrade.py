@@ -140,23 +140,27 @@ def backup_files(skip_uploads=False):
 	return run_cmd(cmd)
 
 def update_extensions():
+	error = 0
 	for ext in extensions:
-	if ext in skip_extensions:
-		info('Skipping '+ext)
-		continue
-	ext_dir = wiki_dir+'extensions/'+ext+'/'
-	if os.path.isfile(ext_dir+'composer.json'):
-		info('Skipping Composer Extension: '+ext)
-	info('Updating '+ext)
-	ret = run_cmd('git pull', cwd=ext_dir)
-	if ret != 0:
-		warn('git pull failed for extension '+ext)
-		return ret
-	ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
-	if ret != 0:
-		warn('failed to update submodules')
-		return ret
-	return 0
+		if ext in skip_extensions:
+			info('Skipping '+ext)
+			continue
+		ext_dir = wiki_dir+'extensions/'+ext+'/'
+		if os.path.isfile(ext_dir+'composer.json'):
+			info('Skipping Composer Extension: '+ext)
+			continue
+		info('Updating '+ext)
+		ret = run_cmd('git pull', cwd=ext_dir)
+		if ret != 0:
+			warn('git pull failed for extension '+ext)
+			error = 1
+			continue
+		ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
+		if ret != 0:
+			warn('failed to update submodules')
+			error = 1
+			continue
+	return error
 
 def check_minor_upgrade():
 	need_update = False
