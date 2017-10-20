@@ -252,7 +252,7 @@ def do_minor_upgrade():
 		fail('updating extensions failed')
 
 	step('Run update.php')
-	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
+	ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')
 	if ret:
 		fail('update.php failed')
 
@@ -330,7 +330,7 @@ def do_major_upgrade():
 		fail('updating extensions failed')
 
 	step('Run update.php')
-	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
+	ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')
 	if ret:
 		fail('update.php failed')
 
