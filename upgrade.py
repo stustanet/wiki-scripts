@@ -45,9 +45,8 @@ backup_dir = cfg('backup', 'dir')
 php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
+extensions_git = cfg('wiki', 'extensions_git').split(',')
 extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir,sub))]
-skip_extensions = cfg('wiki', 'skip_extensions').split(',')
-
 
 # Simple output for non-terminal?
 outSimple = False
@@ -139,17 +138,11 @@ def backup_files(skip_uploads=False):
 	cmd = 'tar czf '+file+options+' '+wiki_dir+'.'
 	return run_cmd(cmd)
 
-def update_extensions():
+def update_extensions_git():
 	error = 0
-	for ext in extensions:
-		if ext in skip_extensions:
-			info('Skipping '+ext)
-			continue
-		ext_dir = wiki_dir+'extensions/'+ext+'/'
-		if os.path.isfile(ext_dir+'composer.json'):
-			info('Skipping Composer Extension: '+ext)
-			continue
+	for ext in extensions_git:
 		info('Updating '+ext)
+		ext_dir = wiki_dir+'extensions/'+ext+'/'
 		ret = run_cmd('git pull', cwd=ext_dir)
 		if ret != 0:
 			warn('git pull failed for extension '+ext)
@@ -184,15 +177,15 @@ def check_minor_upgrade():
 		mediawiki_update = True
 		need_update = True
 
-	# Does not werk properly. Doesn't matter, since for major changes the composer.lock has to be edited => new git commit
-	#step('Checking for Composer updates')
-	#ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-progress --dry-run')
+	extension_updates = False
+	step('Checking for Composer updates')
+	ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --dry-run --no-progress --no-suggest -n --no-ansi')
+	info(ret)
+	# find: Package operations: 0 installs, 1 update, 0 removals
+	# extension_updates = True
 
 	step('Checking for extension update')
-	extension_updates = False
-	for ext in extensions:
-		if ext in skip_extensions:
-			continue
+	for ext in extensions_git:
 		ext_dir = wiki_dir+'extensions/'+ext+'/'
 		ret = run_cmd('git remote update', cwd=ext_dir)
 		if ret != 0:
@@ -249,7 +242,7 @@ def do_minor_upgrade():
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
-	ret = update_extensions()
+	ret = update_extensions_git()
 	if ret != 0:
 		fail('updating extensions failed')
 
@@ -327,7 +320,7 @@ def do_major_upgrade():
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
-	ret = update_extensions()
+	ret = update_extensions_git()
 	if ret != 0:
 		fail('updating extensions failed')
 

@@ -4,7 +4,7 @@ php_service=php7.0-fpm.service
 
 [wiki]
 dir=/var/www/mediawiki/
-skip_extensions=GroupsSidebar,Lockdown
+extensions_git=MultimediaViewer,SemanticDrilldown,UploadWizard,VisualEditor
 check_url=http://localhost/Hauptseite
 
 [backup]
