@@ -42,6 +42,9 @@ wiki_dir = cfg('wiki', 'dir')
 now = datetime.datetime.now()
 backup_name = now.strftime("backup_%Y-%m-%d_%H-%M")
 backup_dir = cfg('backup', 'dir')
+bup_dir = cfg('backup', 'bup_dir')
+bup_idx_files = cfg('backup', 'bup_idx_files')
+bup_idx_db = cfg('backup', 'bup_idx_db')
 php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
@@ -126,17 +129,12 @@ def backup_db():
 	db_name = cfg('backup', 'db_name')
 	db_user = cfg('backup', 'db_user')
 	db_pass = cfg('backup', 'db_pass')
-	file = backup_dir + backup_name + '.sql.gz'
-	return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' | gzip > '+file)
+	file = backup_dir + backup_name + '.sql'
+	return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' > '+file)
 
-def backup_files(skip_uploads=False):
-	postfix = ''
-	options = ''
-	if skip_uploads:
-		postfix = '_minor'
-		options = ' --exclude-tag-all=no_minor_backup.tag'
-	file = backup_dir + backup_name + postfix + '.tar.gz'
-	cmd = 'tar czf '+file+options+' '+wiki_dir+'.'
+def backup_files():
+	cmd = 'BUP_DIR='+bup_dir+' bup save -n '+bup_idx_files+' -c -q '+wiki_dir+''
+	print(cmd)
 	return run_cmd(cmd)
 
 def update_extensions_git():
@@ -232,7 +230,7 @@ def do_minor_upgrade():
 		fail('Database Backup failed')
 
 	step('Backing up Files (without uploads)')
-	ret = backup_files(True)
+	ret = backup_files()
 	if ret:
 		fail('Files Backup failed')
 

@@ -8,7 +8,9 @@ extensions_git=CategoryTree,MultimediaViewer,SemanticDrilldown,UploadWizard,Visu
 check_url=https://wiki.stusta.de/Hauptseite
 
 [backup]
-dir=/somewhere/backup/
+bup_dir=/var/bup/
+bup_idx_files=wiki
+bup_idx_db=wiki-db
 db_name=mediawiki
 db_user=backup
 db_pass=verysicher
