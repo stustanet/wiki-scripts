@@ -160,8 +160,6 @@ def write_ng(c):
     if (c['isssn'] and not c['isnews']):
         tmp.write("Newsgroups: local.netz.info\n")
     if (not c['isssn'] and c['isnews']):
-        tmp.write("Newsgroups: local.ankuendigungen\n")
-    if (not c['isssn'] and not c['isnews']):
         print "Well, this is kinda strange... it should never happen \
         that we dont post to either newsgroup:)"
 
