@@ -38,13 +38,9 @@ config.read(os.path.dirname(os.path.realpath(__file__)) + '/upgrade.ini')
 cfg = config.get
 
 wiki_dir = cfg('wiki', 'dir')
-
-now = datetime.datetime.now()
-backup_name = now.strftime("backup_%Y-%m-%d_%H-%M")
-backup_dir = cfg('backup', 'dir')
+db_dump_dir = cfg('backup', 'db_dump_dir')
 bup_dir = cfg('backup', 'bup_dir')
-bup_idx_files = cfg('backup', 'bup_idx_files')
-bup_idx_db = cfg('backup', 'bup_idx_db')
+bup_idx = cfg('backup', 'bup_idx')
 php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
@@ -126,15 +122,17 @@ def get_newest_version():
 	return branches[len(branches)-1]
 
 def backup_db():
+	now = datetime.datetime.now()
+	backup_name = now.strftime("wiki_%Y-%m-%d_%H-%M")
 	db_name = cfg('backup', 'db_name')
 	db_user = cfg('backup', 'db_user')
 	db_pass = cfg('backup', 'db_pass')
-	file = backup_dir + backup_name + '.sql'
-	return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' > '+file)
+	file = db_dump_dir + backup_name + '.sql.gz'
+	return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' | gzip > '+file)
 
 def backup_files():
 	cmd = 'BUP_DIR='+bup_dir+' bup save -n '+bup_idx_files+' -c -q '+wiki_dir+''
-	print(cmd)
+	info(cmd)
 	return run_cmd(cmd)
 
 def update_extensions_git():
