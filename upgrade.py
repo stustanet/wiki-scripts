@@ -95,7 +95,8 @@ def success(msg,code):
 
 def get_cmd(cmd, cwd=wiki_dir):
 	sys.stdout.flush()
-	return subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE).stdout.read().decode("utf-8").strip()
+	out = subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+	return (out[0].decode('utf-8').strip(),out[1].decode('utf-8').strip())
 
 def run_cmd(cmd, cwd=wiki_dir):
 	sys.stdout.flush()
@@ -112,7 +113,7 @@ def branch_version(s):
 	return -1
 
 def get_current_version():
-	return get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')
+	return get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
 def get_newest_version():
 	p = subprocess.Popen('git branch -r', cwd=wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
@@ -144,12 +145,12 @@ def update_extensions_git():
 		info('Updating '+ext)
 		ext_dir = wiki_dir+'extensions/'+ext+'/'
 		ret = run_cmd('git pull', cwd=ext_dir)
-		if ret != 0:
+		if ret:
 			warn('git pull failed for extension '+ext)
 			error = 1
 			continue
 		ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
-		if ret != 0:
+		if ret:
 			warn('failed to update submodules')
 			error = 1
 			continue
@@ -161,13 +162,13 @@ def check_minor_upgrade():
 	step('Checking for mediawiki update')
 	mediawiki_update = False
 	ret = run_cmd('git remote update')
-	if ret != 0:
+	if ret:
 		fail('could not update get remote')
-	local = get_cmd('git rev-parse @')
+	local = get_cmd('git rev-parse @')[0]
 	info('local', local)
-	remote = get_cmd('git rev-parse @{u}')
+	remote = get_cmd('git rev-parse @{u}')[0]
 	info('remote', remote)
-	base = get_cmd('git merge-base @ @{u}')
+	base = get_cmd('git merge-base @ @{u}')[0]
 	info('base', base)
 	if local == remote:
 		log('Up-to-date')
@@ -180,19 +181,23 @@ def check_minor_upgrade():
 	extension_updates = False
 	step('Checking for Composer updates')
 	ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --dry-run --no-progress --no-suggest -n --no-ansi')
-	info(ret)
-	# find: Package operations: 0 installs, 1 update, 0 removals
-	# extension_updates = True
+	ret = re.findall('([0-9]+) installs, ([0-9]+) update, ([0-9]+) removals', ret[1])
+	if len(ret) != 1:
+		fail("checking composer updates failed")
+	composer_changes = int(ret[0][1])+int(ret[0][2])
+	if composer_changes > 1:
+		info(str(composer_changes)+' composer changes')
+		extension_updates = True
 
 	step('Checking for extension update')
 	for ext in extensions_git:
 		ext_dir = wiki_dir+'extensions/'+ext+'/'
 		ret = run_cmd('git remote update', cwd=ext_dir)
-		if ret != 0:
+		if ret:
 			warn('git pull failed for extension: '+ext+'. Skipping...')
 			continue
-		local = get_cmd('git rev-parse @', cwd=ext_dir)
-		remote = get_cmd('git rev-parse @{u}', cwd=ext_dir)
+		local = get_cmd('git rev-parse @', cwd=ext_dir)[0]
+		remote = get_cmd('git rev-parse @{u}', cwd=ext_dir)[0]
 		if local != remote:
 			info('New commits available for extension: '+ext)
 			extension_updates = True
@@ -212,48 +217,48 @@ def do_minor_upgrade():
 	info('updates available. proceeding...\n')
 
 	step('Checking wiki dir')
-	ret = get_cmd('git status --porcelain -uno')
+	ret = get_cmd('git status --porcelain -uno')[0]
 	if ret != '':
 		fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
 	step('Stop PHP Service')
 	ret = run_cmd('systemctl stop '+php_service)
-	if ret != 0:
+	if ret:
 		fail('Failed to stop PHP Service')
 
 	step('Backing up Database')
 	ret = backup_db()
-	if ret != 0:
+	if ret:
 		fail('Database Backup failed')
 
 	step('Backing up Files (without uploads)')
 	ret = backup_files(True)
-	if ret != 0:
+	if ret:
 		fail('Files Backup failed')
 
 	step('Pulling new commits')
 	ret = run_cmd('git pull')
-	if ret != 0:
+	if ret:
 		fail('git pull failed')
 
 	step('Updating Extensions (Composer)')
 	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update')
-	if ret != 0:
+	if ret:
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
 	ret = update_extensions_git()
-	if ret != 0:
+	if ret:
 		fail('updating extensions failed')
 
 	step('Run update.php')
 	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
-	if ret != 0:
+	if ret:
 		fail('update.php failed')
 
 	step('Start PHP Service')
 	ret = run_cmd('systemctl start '+php_service)
-	if ret != 0:
+	if ret:
 		fail('Failed to start PHP Service')
 
 	# load Main page to verify status code and fill caches
@@ -288,50 +293,50 @@ def do_major_upgrade():
 	info('new version available. proceeding...\n')
 
 	step('Checking wiki dir')
-	ret = get_cmd('git status --porcelain -uno')
+	ret = get_cmd('git status --porcelain -uno')[0]
 	if ret != '':
 		fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
 	step('Stop PHP Service')
 	ret = run_cmd('systemctl stop '+php_service)
-	if ret != 0:
+	if ret:
 		fail('Failed to stop PHP Service')
 
 	step('Backing up Database')
 	ret = backup_db()
-	if ret != 0:
+	if ret:
 		fail('Database Backup failed')
 
 	step('Backing up Files (with uploads)')
 	ret = backup_files()
-	if ret != 0:
+	if ret:
 		fail('Files Backup failed')
 
 	step('Checkout new mediawiki branch')
 	new_version = get_newest_version()
 	upgrade_cmd = 'git pull && git checkout '+new_version
 	ret = run_cmd(upgrade_cmd)
-	if ret != 0:
+	if ret:
 		fail(upgrade_cmd+' failed!')
 
 	step('Updating Extensions (Composer)')
 	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update')
-	if ret != 0:
+	if ret:
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
 	ret = update_extensions_git()
-	if ret != 0:
+	if ret:
 		fail('updating extensions failed')
 
 	step('Run update.php')
 	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
-	if ret != 0:
+	if ret:
 		fail('update.php failed')
 
 	step('Start PHP Service')
 	ret = run_cmd('systemctl start '+php_service)
-	if ret != 0:
+	if ret:
 		fail('Failed to start PHP Service')
 
 	# load Main page to verify status code and warum up HHVM
