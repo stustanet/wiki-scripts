@@ -131,7 +131,7 @@ def backup_db():
 	return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' | gzip > '+file)
 
 def backup_files():
-	cmd = 'BUP_DIR='+bup_dir+' bup save -n '+bup_idx_files+' -c -q '+wiki_dir+''
+	cmd = 'BUP_DIR='+bup_dir+' bup save -n '+bup_idx+' -c -q '+wiki_dir+''
 	info(cmd)
 	return run_cmd(cmd)
 
