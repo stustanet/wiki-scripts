@@ -139,6 +139,24 @@ def backup_files(skip_uploads=False):
 	cmd = 'tar czf '+file+options+' '+wiki_dir+'.'
 	return run_cmd(cmd)
 
+def update_extensions():
+	for ext in extensions:
+	if ext in skip_extensions:
+		info('Skipping '+ext)
+		continue
+	if
+	info('Updating '+ext)
+	ext_dir = wiki_dir+'extensions/'+ext+'/'
+	ret = run_cmd('git pull', cwd=ext_dir)
+	if ret != 0:
+		warn('git pull failed for extension '+ext)
+		return ret
+	ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
+	if ret != 0:
+		warn('failed to update submodules')
+		return ret
+	return 0
+
 def check_minor_upgrade():
 	need_update = False
 
@@ -226,18 +244,9 @@ def do_minor_upgrade():
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
-	for ext in extensions:
-		if ext in skip_extensions:
-			info('Skipping '+ext)
-			continue
-		info('Updating '+ext)
-		ext_dir = wiki_dir+'extensions/'+ext+'/'
-		ret = run_cmd('git pull', cwd=ext_dir)
-		if ret != 0:
-			fail('git pull failed for extension '+ext)
-		ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
-		if ret != 0:
-			fail('failed to update submodules')
+	ret = update_extensions()
+	if ret != 0:
+		fail('updating extensions failed')
 
 	step('Run update.php')
 	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
@@ -313,18 +322,9 @@ def do_major_upgrade():
 		fail('composer update failed')
 
 	step('Updating Extensions (git)')
-	for ext in extensions:
-		if ext in skip_extensions:
-			info('Skipping '+ext)
-			continue
-		info('Updating '+ext)
-		ext_dir = wiki_dir+'extensions/'+ext+'/'
-		ret = run_cmd(upgrade_cmd, cwd=ext_dir)
-		if ret != 0:
-			fail(upgrade_cmd+' failed for extension '+ext)
-		ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
-		if ret != 0:
-			fail('failed to update submodules')
+	ret = update_extensions()
+	if ret != 0:
+		fail('updating extensions failed')
 
 	step('Run update.php')
 	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
