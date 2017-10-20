@@ -42,6 +42,7 @@ wiki_dir = cfg('wiki', 'dir')
 now = datetime.datetime.now()
 backup_name = now.strftime("backup_%Y-%m-%d_%H-%M")
 backup_dir = cfg('backup', 'dir')
+php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
 extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir,sub))]
@@ -163,7 +164,7 @@ def check_minor_upgrade():
 	# Does not werk properly. Doesn't matter, since for major changes the composer.lock has to be edited => new git commit
 	#step('Checking for Composer updates')
 	#ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-progress --dry-run')
-	
+
 	step('Checking for extension update')
 	extension_updates = False
 	for ext in extensions:
@@ -179,15 +180,15 @@ def check_minor_upgrade():
 		if local != remote:
 			info('New commits available for extension: '+ext)
 			extension_updates = True
-	
+
 	if extension_updates:
 		need_update = True
-	
+
 	if not need_update:
 		log('up-to-date')
 	return need_update
 
-def do_minor_upgrade():	
+def do_minor_upgrade():
 	do_upgrade = check_minor_upgrade()
 	if not do_upgrade:
 		return
@@ -199,11 +200,11 @@ def do_minor_upgrade():
 	if ret != '':
 		fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
-	step('Stop HHVM')
-	ret = run_cmd('systemctl stop hhvm')
+	step('Stop PHP Service')
+	ret = run_cmd('systemctl stop '+php_service)
 	if ret != 0:
-		fail('Failed to stop HHVM')
-	
+		fail('Failed to stop PHP Service')
+
 	step('Backing up Database')
 	ret = backup_db()
 	if ret != 0:
@@ -218,7 +219,7 @@ def do_minor_upgrade():
 	ret = run_cmd('git pull')
 	if ret != 0:
 		fail('git pull failed')
-	
+
 	step('Updating Extensions (Composer)')
 	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update')
 	if ret != 0:
@@ -242,21 +243,21 @@ def do_minor_upgrade():
 	ret = run_cmd('php update.php', cwd=wiki_dir+'maintenance/')
 	if ret != 0:
 		fail('update.php failed')
-	
-	step('Start HHVM')
-	ret = run_cmd('systemctl start hhvm')
-	if ret != 0:
-		fail('Failed to start HHVM')
 
-	# load Main page to verify status code and warum up HHVM
+	step('Start PHP Service')
+	ret = run_cmd('systemctl start '+php_service)
+	if ret != 0:
+		fail('Failed to start PHP Service')
+
+	# load Main page to verify status code and fill caches
 	step('Making test request')
-	time.sleep(3) # give the server a short time to start HHVM
-	r = requests.get(cfg('wiki', 'check_url'))	
+	time.sleep(3) # give the server a short time to start
+	r = requests.get(cfg('wiki', 'check_url'))
 	if r.status_code != 200:
 		fail('Check URL returned status code '+str(r.status_code))
 
 	success('Done.', 1) # non-zero return code to signal that we made changes
-	
+
 def check_major_upgrade():
 	step('Checking for new version')
 	newest_version = get_newest_version()
@@ -284,10 +285,10 @@ def do_major_upgrade():
 	if ret != '':
 		fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
-	step('Stop HHVM')
-	ret = run_cmd('systemctl stop hhvm')
+	step('Stop PHP Service')
+	ret = run_cmd('systemctl stop '+php_service)
 	if ret != 0:
-		fail('Failed to stop HHVM')
+		fail('Failed to stop PHP Service')
 
 	step('Backing up Database')
 	ret = backup_db()
@@ -330,10 +331,10 @@ def do_major_upgrade():
 	if ret != 0:
 		fail('update.php failed')
 
-	step('Start HHVM')
-	ret = run_cmd('systemctl start hhvm')
+	step('Start PHP Service')
+	ret = run_cmd('systemctl start '+php_service)
 	if ret != 0:
-		fail('Failed to start HHVM')
+		fail('Failed to start PHP Service')
 
 	# load Main page to verify status code and warum up HHVM
 	step('Making test request')
@@ -353,7 +354,7 @@ def main(args):
 	args = parser.parse_args()
 
 	outSimple = args.simple
-	
+
 	if args.major:
 		do_major_upgrade()
 		return
