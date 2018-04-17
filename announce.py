@@ -28,7 +28,7 @@ import urllib.parse
 # sending the email
 import smtplib
 from email.message import EmailMessage
-
+from email.utils import localtime
 
 def format_news(entry, page):
     content = page.text()
@@ -92,6 +92,7 @@ def send_mail(subject, author, body):
     msg = EmailMessage()
     msg.set_content(body)
     msg['Subject'] = subject
+    msg['Date'] = localtime()
     msg['From'] = author + " <no-reply@mail.stusta.de>"
     msg['To'] = "announce@lists.stusta.de"
     s = smtplib.SMTP('mail.stusta.de')
