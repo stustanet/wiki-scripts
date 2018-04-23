@@ -176,7 +176,7 @@ def check_minor_upgrade():
 
 	extension_updates = False
 	step('Checking for Composer updates')
-	ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --dry-run --no-progress --no-suggest -n --no-ansi')
+	ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
 	ret = re.findall('([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
 	if len(ret) != 1:
 		fail("checking composer updates failed")
@@ -238,7 +238,7 @@ def do_minor_upgrade():
 		fail('git pull failed')
 
 	step('Updating Extensions (Composer)')
-	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update')
+	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
 	if ret:
 		fail('composer update failed')
 
@@ -316,7 +316,7 @@ def do_major_upgrade():
 		fail(upgrade_cmd+' failed!')
 
 	step('Updating Extensions (Composer)')
-	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update')
+	ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
 	if ret:
 		fail('composer update failed')
 
