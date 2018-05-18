@@ -178,12 +178,11 @@ def check_minor_upgrade():
 	step('Checking for Composer updates')
 	ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
 	ret = re.findall('([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
-	if len(ret) != 1:
-		fail("checking composer updates failed")
-	composer_changes = int(ret[0][1])+int(ret[0][2])
-	if composer_changes > 1:
-		info(str(composer_changes)+' composer changes')
-		extension_updates = True
+	if len(ret) > 0:
+		composer_changes = int(ret[0][1])+int(ret[0][2])
+		if composer_changes > 1:
+			info(str(composer_changes)+' composer changes')
+			extension_updates = True
 
 	step('Checking for extension update')
 	for ext in extensions_git:
