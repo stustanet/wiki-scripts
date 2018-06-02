@@ -91,10 +91,11 @@ def format_news(entry, page):
 def send_mail(subject, author, body):
     msg = EmailMessage()
     msg.set_content(body)
-    msg['Subject'] = subject
-    msg['Date'] = localtime()
-    msg['From'] = author + " <no-reply@mail.stusta.de>"
-    msg['To'] = "announce@lists.stusta.de"
+    msg['subject'] = subject
+    msg['date'] = localtime()
+    msg['from'] = author + " <no-reply@mail.stusta.de>"
+    msg['to'] = "announce@lists.stusta.de"
+    msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.de>"
     s = smtplib.SMTP('mail.stusta.de')
     s.send_message(msg)
     s.quit()
