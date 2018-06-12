@@ -6,9 +6,9 @@ export HOME=/root
 /usr/local/bin/wiki-scripts/upgrade.py --simple > /tmp/wiki_update 2>&1
 
 ret=$?
-if [ ret -eq 0 ]; then
+if [ $ret -eq 0 ]; then
     SUBJECT="[UNCHANGED] Wiki Upgrade"
-elif [ ret -eq 1 ]; then
+elif [ $ret -eq 1 ]; then
     SUBJECT="[SUCCESS] Wiki Upgrade"
 else
     SUBJECT="[ERROR] Wiki Upgrade"
