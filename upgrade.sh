@@ -5,9 +5,12 @@ export HOME=/root
 
 /usr/local/bin/wiki-scripts/upgrade.py --simple > /tmp/wiki_update 2>&1
 
-if [ $? -ne 0 ]; then
-    SUBJECT="[ERROR] Wiki Upgrade"
-else
+ret=$?
+if [ ret -eq 0 ]; then
+    SUBJECT="[UNCHANGED] Wiki Upgrade"
+elif [ ret -eq 1 ]; then
     SUBJECT="[SUCCESS] Wiki Upgrade"
+else
+    SUBJECT="[ERROR] Wiki Upgrade"
 fi
 cat /tmp/wiki_update | mail root -s "$SUBJECT"
