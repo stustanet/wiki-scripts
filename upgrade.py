@@ -48,19 +48,19 @@ extensions_git = cfg('wiki', 'extensions_git').split(',')
 extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir,sub))]
 
 # Simple output for non-terminal?
-outSimple = False
+out_simple = False
 
 def log(msg):
     print(msg)
 
 def step(msg):
-    if outSimple:
+    if out_simple:
         print('\n:: '+msg+' ::')
         return
     print('\n\x1b[40m\x1b[95m'+msg+' ...\x1b[0m')
 
 def info(k, v=''):
-    if outSimple:
+    if out_simple:
         if v == '':
             print('[INFO] '+k)
         else:
@@ -72,13 +72,13 @@ def info(k, v=''):
     print('\x1b[94m' + k + '\x1b[0m: ' + v)
 
 def warn(msg):
-    if outSimple:
+    if out_simple:
         print('[WARN] '+msg)
     else:
         print('\x1b[40m\x1b[93mWARN\x1b[0m: '+msg)
 
 def fail(msg=''):
-    if outSimple:
+    if out_simple:
         if msg != '':
             print('[FAIL] '+msg)
     else:
@@ -86,7 +86,7 @@ def fail(msg=''):
     exit(-1)
 
 def success(msg,code):
-    if outSimple:
+    if out_simple:
         print('[SUCCESS] '+msg)
     else:
         print('\x1b[40m\x1b[92mSUCCESS\x1b[0m: '+msg)
@@ -115,8 +115,8 @@ def get_current_version():
     return get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
 def get_newest_version():
-    p = subprocess.Popen('git branch -r', cwd=wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
-    branches = sorted(get_branches(p.decode("utf-8")), key=lambda v: branch_version(v))
+    process = subprocess.Popen('git branch -r', cwd=wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
+    branches = sorted(get_branches(process.decode("utf-8")), key=lambda v: branch_version(v))
     if len(branches) < 1:
         return None
     return branches[len(branches)-1]
@@ -156,7 +156,6 @@ def check_minor_upgrade():
     need_update = False
 
     step('Checking for mediawiki update')
-    mediawiki_update = False
     ret = run_cmd('git remote update')
     if ret:
         fail('could not update get remote')
@@ -171,14 +170,13 @@ def check_minor_upgrade():
     elif local != base:
         fail('Branch was modified. Can not pull!')
     else:
-        mediawiki_update = True
         need_update = True
 
     extension_updates = False
     step('Checking for Composer updates')
     ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
     ret = re.findall('([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
-    if len(ret) > 0:
+    if ret:
         composer_changes = int(ret[0][1])+int(ret[0][2])
         if composer_changes > 1:
             info(str(composer_changes)+' composer changes')
@@ -259,9 +257,9 @@ def do_minor_upgrade():
     # load Main page to verify status code and fill caches
     step('Making test request')
     time.sleep(3) # give the server a short time to start
-    r = requests.get(cfg('wiki', 'check_url'))
-    if r.status_code != 200:
-        fail('Check URL returned status code '+str(r.status_code))
+    req = requests.get(cfg('wiki', 'check_url'))
+    if req.status_code != 200:
+        fail('Check URL returned status code '+str(req.status_code))
 
     success('Done.', 1) # non-zero return code to signal that we made changes
 
@@ -337,21 +335,21 @@ def do_major_upgrade():
     # load Main page to verify status code and warum up HHVM
     step('Making test request')
     time.sleep(3) # give the server a short time to start HHVM
-    r = requests.get(cfg('wiki', 'check_url'))
-    if r.status_code != 200:
-        fail('Check URL returned status code '+str(r.status_code))
+    req = requests.get(cfg('wiki', 'check_url'))
+    if req.status_code != 200:
+        fail('Check URL returned status code '+str(req.status_code))
 
     success('Done.', 1) # non-zero return code to signal that we made changes
 
 def main(args):
-    global outSimple
+    global out_simple
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--simple', help='use simple output for non-terminal', action='store_true')
     parser.add_argument('--major', help='perform a major version upgrade', action='store_true')
     args = parser.parse_args()
 
-    outSimple = args.simple
+    out_simple = args.simple
 
     if args.major:
         do_major_upgrade()
