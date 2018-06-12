@@ -7,7 +7,7 @@ export HOME=/root
 
 ret=$?
 if [ $ret -eq 0 ]; then
-    SUBJECT="[UNCHANGED] Wiki Upgrade"
+    exit 0
 elif [ $ret -eq 1 ]; then
     SUBJECT="[SUCCESS] Wiki Upgrade"
 else
