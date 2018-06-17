@@ -194,6 +194,8 @@ def check_minor_upgrade():
         if local != remote:
             info('New commits available for extension: '+ext)
             extension_updates = True
+        else:
+            info('up-to-date: '+ext)
 
     if extension_updates:
         need_update = True
