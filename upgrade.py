@@ -212,7 +212,7 @@ def do_minor_upgrade():
     info('updates available. proceeding...\n')
 
     step('Checking wiki dir')
-    ret = get_cmd('git status --porcelain -uno')[0]
+    ret = get_cmd('git status --porcelain --ignore-submodules=all -uno')[0]
     if ret != '':
         fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
