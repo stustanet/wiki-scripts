@@ -234,6 +234,11 @@ def do_minor_upgrade():
     if ret:
         fail('git pull failed')
 
+    step('Updating Submodules')
+    ret = run_cmd('git submodule update')
+    if ret:
+        fail('git submodule update failed')
+
     step('Updating Extensions (Composer)')
     ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
     if ret:
@@ -286,7 +291,7 @@ def do_major_upgrade():
     info('new version available. proceeding...\n')
 
     step('Checking wiki dir')
-    ret = get_cmd('git status --porcelain -uno')[0]
+    ret = get_cmd('git status --porcelain -uno --ignore-submodules=all')[0]
     if ret != '':
         fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
@@ -311,6 +316,11 @@ def do_major_upgrade():
     ret = run_cmd(upgrade_cmd)
     if ret:
         fail(upgrade_cmd+' failed!')
+
+    step('Updating Submodules')
+    ret = run_cmd('git submodule update')
+    if ret:
+        fail('git submodule update failed')
 
     step('Updating Extensions (Composer)')
     ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
