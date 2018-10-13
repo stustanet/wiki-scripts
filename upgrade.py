@@ -237,7 +237,7 @@ def do_minor_upgrade():
         fail('git pull failed')
 
     step('Updating Submodules')
-    ret = run_cmd('git submodule update')
+    ret = run_cmd('git submodule update --init --recursive')
     if ret:
         fail('git submodule update failed')
 
@@ -320,7 +320,7 @@ def do_major_upgrade():
         fail(upgrade_cmd+' failed!')
 
     step('Updating Submodules')
-    ret = run_cmd('git submodule update')
+    ret = run_cmd('git submodule update --init --recursive')
     if ret:
         fail('git submodule update failed')
 
