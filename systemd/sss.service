@@ -2,5 +2,7 @@
 Description=Wiki Sprechstunden Bot
 
 [Service]
+User=www-data
+Group=www-data
 Type=simple
 ExecStart=/usr/local/bin/wiki-scripts/sss.py
