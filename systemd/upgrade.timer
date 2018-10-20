@@ -1,0 +1,9 @@
+[Unit]
+Description=Wiki Upgrade Timer
+
+[Timer]
+# Daily at 1:07:21
+OnCalendar=*-*-* 01:07:21
+
+[Install]
+WantedBy=timers.target

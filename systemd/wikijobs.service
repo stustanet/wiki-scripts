@@ -1,0 +1,11 @@
+[Unit]
+Description=Wiki Jobs Runner
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/php /var/www/wiki/maintenance/runJobs.php > /var/log/runJobs.log 2>&1
+Nice=10
+ProtectSystem=full
+User=www-data
+OOMScoreAdjust=200
+StandardOutput=journal

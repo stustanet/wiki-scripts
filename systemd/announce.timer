@@ -1,0 +1,9 @@
+[Unit]
+Description=Wiki Announce
+
+[Timer]
+# Every full hour
+OnCalendar=*-*-* *:00:00
+
+[Install]
+WantedBy=timers.target

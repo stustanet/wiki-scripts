@@ -1,0 +1,9 @@
+[Unit]
+Description=Wiki Jobs Queue Timer
+
+[Timer]
+# Daily at 23:07:21
+OnCalendar=*-*-* 23:07:21
+
+[Install]
+WantedBy=timers.target

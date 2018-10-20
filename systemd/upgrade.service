@@ -1,0 +1,8 @@
+[Unit]
+Description=Wiki Upgrade Script
+
+[Service]
+User=www-data
+Group=www-data
+Type=simple
+ExecStart=/usr/local/bin/wiki-scripts/upgrade.sh

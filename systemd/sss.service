@@ -1,0 +1,6 @@
+[Unit]
+Description=Wiki Sprechstunden Bot
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wiki-scripts/sss.py
