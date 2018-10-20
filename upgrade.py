@@ -41,6 +41,7 @@ wiki_dir = cfg('wiki', 'dir')
 db_dump_dir = cfg('backup', 'db_dump_dir')
 bup_dir = cfg('backup', 'bup_dir')
 bup_idx = cfg('backup', 'bup_idx')
+composer_home = cfg('env', 'composer_home')
 php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
@@ -266,7 +267,7 @@ def do_minor_upgrade():
         fail('git submodule update failed')
 
     step('Updating Extensions (Composer)')
-    ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
+    ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' COMPOSER_HOME='+composer_home+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
     if ret:
         fail('composer update failed')
 

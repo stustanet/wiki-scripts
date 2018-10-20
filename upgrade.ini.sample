@@ -1,6 +1,7 @@
 [env]
 proxy=http://proxy.stusta.de:3128
 php_service=php7.0-fpm.service
+composer_home=/var/cache/composer
 
 [wiki]
 dir=/var/www/mediawiki/
@@ -9,7 +10,7 @@ skins_git=MobileFrontend
 check_url=https://wiki.stusta.de/Hauptseite
 
 [backup]
-db_dump_dir=/var/backup/
+db_dump_dir=/var/backup/wiki/
 bup_dir=/var/bup/
 bup_idx=wiki
 db_name=mediawiki
