@@ -45,7 +45,10 @@ php_service = cfg('env', 'php_service')
 proxy = cfg('env', 'proxy')
 extensions_dir = wiki_dir+'extensions/'
 extensions_git = cfg('wiki', 'extensions_git').split(',')
-extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir,sub))]
+extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir, sub))]
+skins_dir = wiki_dir+'skins/'
+skins_git = cfg('wiki', 'skins_git').split(',')
+skins = [sub for sub in os.listdir(skins_dir) if os.path.isdir(os.path.join(skins_dir, sub))]
 
 # Simple output for non-terminal?
 out_simple = False
@@ -85,7 +88,7 @@ def fail(msg=''):
         print('\x1b[40m\x1b[91mFAILED!\x1b[0m: '+msg)
     exit(-1)
 
-def success(msg,code):
+def success(msg, code):
     if out_simple:
         print('[SUCCESS] '+msg)
     else:
@@ -95,7 +98,7 @@ def success(msg,code):
 def get_cmd(cmd, cwd=wiki_dir):
     sys.stdout.flush()
     out = subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    return (out[0].decode('utf-8').strip(),out[1].decode('utf-8').strip())
+    return (out[0].decode('utf-8').strip(), out[1].decode('utf-8').strip())
 
 def run_cmd(cmd, cwd=wiki_dir):
     sys.stdout.flush()
@@ -135,21 +138,43 @@ def backup_files():
     info(cmd)
     return run_cmd(cmd)
 
+def check_git_module_update(subdir):
+    git_dir = wiki_dir+subdir+'/'
+    ret = run_cmd('git remote update', cwd=git_dir)
+    if ret:
+        warn('git pull failed for '+subdir+'. Skipping...')
+        return False
+    local = get_cmd('git rev-parse @', cwd=git_dir)[0]
+    remote = get_cmd('git rev-parse @{u}', cwd=git_dir)[0]
+    return local != remote
+
+def update_git_module(subdir):
+    git_dir = wiki_dir+subdir+'/'
+    ret = run_cmd('git pull', cwd=git_dir)
+    if ret:
+        warn('git pull failed for '+subdir)
+        return ret
+    ret = run_cmd('git submodule update --init --recursive', cwd=git_dir)
+    if ret:
+        warn('failed to update submodules')
+        return ret
+
 def update_extensions_git():
     error = 0
     for ext in extensions_git:
         info('Updating '+ext)
-        ext_dir = wiki_dir+'extensions/'+ext+'/'
-        ret = run_cmd('git pull', cwd=ext_dir)
+        ret = update_git_module('extensions/'+ext)
         if ret:
-            warn('git pull failed for extension '+ext)
             error = 1
-            continue
-        ret = run_cmd('git submodule update --init --recursive', cwd=ext_dir)
+    return error
+
+def update_skins_git():
+    error = 0
+    for ext in skins_git:
+        info('Updating '+skin)
+        ret = update_git_module('skins/'+skin)
         if ret:
-            warn('failed to update submodules')
             error = 1
-            continue
     return error
 
 def check_minor_upgrade():
@@ -172,7 +197,6 @@ def check_minor_upgrade():
     else:
         need_update = True
 
-    extension_updates = False
     step('Checking for Composer updates')
     ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
     ret = re.findall('([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
@@ -180,28 +204,28 @@ def check_minor_upgrade():
         composer_changes = int(ret[0][1])+int(ret[0][2])
         if composer_changes > 1:
             info(str(composer_changes)+' composer changes')
-            extension_updates = True
+            need_update = True
 
     step('Checking for extension update')
     for ext in extensions_git:
-        ext_dir = wiki_dir+'extensions/'+ext+'/'
-        ret = run_cmd('git remote update', cwd=ext_dir)
-        if ret:
-            warn('git pull failed for extension: '+ext+'. Skipping...')
-            continue
-        local = get_cmd('git rev-parse @', cwd=ext_dir)[0]
-        remote = get_cmd('git rev-parse @{u}', cwd=ext_dir)[0]
-        if local != remote:
+        has_updates = check_git_module_update('extensions/'+ext)
+        if has_updates:
             info('New commits available for extension: '+ext)
-            extension_updates = True
+            need_update = True
         else:
-            info('up-to-date: '+ext)
+            info('Up-to-date: '+ext)
 
-    if extension_updates:
-        need_update = True
+    step('Checking for skin update')
+    for skin in skins_git:
+        has_updates = check_git_module_update('skins/'+skin)
+        if has_updates:
+            info('New commits available for skin: '+skin)
+            need_update = True
+        else:
+            info('Up-to-date: '+skin)
 
     if not need_update:
-        log('up-to-date')
+        log('Up-to-date')
     return need_update
 
 def do_minor_upgrade():
@@ -209,7 +233,7 @@ def do_minor_upgrade():
     if not do_upgrade:
         return
 
-    info('updates available. proceeding...\n')
+    info('Updates available. Proceeding...\n')
 
     step('Checking wiki dir')
     ret = get_cmd('git status --porcelain --ignore-submodules=all -uno')[0]
@@ -251,6 +275,11 @@ def do_minor_upgrade():
     if ret:
         fail('updating extensions failed')
 
+    step('Updating Skins (git)')
+    ret = update_skins_git()
+    if ret:
+        fail('updating skins failed')
+
     step('Run update.php')
     ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')
     if ret:
@@ -290,7 +319,7 @@ def do_major_upgrade():
     if not do_upgrade:
         return
 
-    info('new version available. proceeding...\n')
+    info('New version available. Proceeding...\n')
 
     step('Checking wiki dir')
     ret = get_cmd('git status --porcelain -uno --ignore-submodules=all')[0]
@@ -333,6 +362,11 @@ def do_major_upgrade():
     ret = update_extensions_git()
     if ret:
         fail('updating extensions failed')
+
+    step('Updating Skins (git)')
+    ret = update_skins_git()
+    if ret:
+        fail('updating skins failed')
 
     step('Run update.php')
     ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')

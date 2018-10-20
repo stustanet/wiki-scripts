@@ -5,6 +5,7 @@ php_service=php7.0-fpm.service
 [wiki]
 dir=/var/www/mediawiki/
 extensions_git=CategoryTree,MultimediaViewer,SemanticDrilldown,UploadWizard,VisualEditor
+skins_git=MobileFrontend
 check_url=https://wiki.stusta.de/Hauptseite
 
 [backup]
