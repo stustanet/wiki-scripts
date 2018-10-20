@@ -170,7 +170,7 @@ def update_extensions_git():
 
 def update_skins_git():
     error = 0
-    for ext in skins_git:
+    for skin in skins_git:
         info('Updating '+skin)
         ret = update_git_module('skins/'+skin)
         if ret:
