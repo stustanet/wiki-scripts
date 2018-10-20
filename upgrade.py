@@ -241,7 +241,7 @@ def do_minor_upgrade():
         fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
     step('Stop PHP Service')
-    ret = run_cmd('systemctl stop '+php_service)
+    ret = run_cmd('sudo /bin/systemctl stop '+php_service)
     if ret:
         fail('Failed to stop PHP Service')
 
@@ -286,7 +286,7 @@ def do_minor_upgrade():
         fail('update.php failed')
 
     step('Start PHP Service')
-    ret = run_cmd('systemctl start '+php_service)
+    ret = run_cmd('sudo /bin/systemctl start '+php_service)
     if ret:
         fail('Failed to start PHP Service')
 
@@ -327,7 +327,7 @@ def do_major_upgrade():
         fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
     step('Stop PHP Service')
-    ret = run_cmd('systemctl stop '+php_service)
+    ret = run_cmd('sudo /bin/systemctl stop '+php_service)
     if ret:
         fail('Failed to stop PHP Service')
 
@@ -374,7 +374,7 @@ def do_major_upgrade():
         fail('update.php failed')
 
     step('Start PHP Service')
-    ret = run_cmd('systemctl start '+php_service)
+    ret = run_cmd('sudo /bin/systemctl start '+php_service)
     if ret:
         fail('Failed to start PHP Service')
 
