@@ -29,3 +29,14 @@ Helper script to perform the steps required for an upgrade automatically:
 * Perform test request
 
 `upgrade.sh` is a simple wrapper for runs via timers/cronjobs, sending mail reports.
+
+The upgrade script should be run as an unprivileged user but requires the ability to restart the PHP-FPM service. Thus sudo and a whitelisting for the required commands should be confgiured:
+
+```sh
+$ visudo
+
+# insert:
+www-data ALL=(root) NOPASSWD: /bin/systemctl stop php7.0-fpm.service
+www-data ALL=(root) NOPASSWD: /bin/systemctl start php7.0-fpm.service
+www-data ALL=(root) NOPASSWD: /bin/systemctl reload php7.0-fpm.service
+```
