@@ -1,7 +1,7 @@
 #! /bin/bash
 
 export https_proxy=http://proxy.stusta.de:3128
-export HOME=/root
+export HOME=/var/www
 
 /usr/local/bin/wiki-scripts/upgrade.py --simple > /tmp/wiki_update 2>&1
 
