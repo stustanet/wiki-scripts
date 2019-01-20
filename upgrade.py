@@ -115,15 +115,30 @@ def branch_version(s):
         return int(s[3])*100 + int(s[5])
     return -1
 
+def version_is_stable(version):
+    if version.startswith('REL'):
+        version = version[3:].replace('_', '.') + ".0"
+    # check if 1.xx.0 was tagged (initial stable release)
+    return get_cmd('git tag -l ' + version)[0] == version
+
 def get_current_version():
     return get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
-def get_newest_version():
+def get_newest_version(stable=True):
     process = subprocess.Popen('git branch -r', cwd=wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
     branches = sorted(get_branches(process.decode("utf-8")), key=lambda v: branch_version(v))
     if len(branches) < 1:
         return None
-    return branches[len(branches)-1]
+    i = len(branches)-1
+    branch = branches[i]
+    if stable:
+        while not version_is_stable(branch):
+            info(branch + " is not stable yet.")
+            if i is 0:
+                return None
+            i -= 1
+            branch = branches[i]
+    return branch
 
 def backup_db():
     now = datetime.datetime.now()
