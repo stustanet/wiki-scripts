@@ -417,10 +417,12 @@ def main(args):
         do_major_upgrade()
         return
 
-    do_minor_upgrade()
+    ret = 0
     if check_major_upgrade():
         log('new major version available!')
-        exit(2)
+        ret = 2
+    do_minor_upgrade()
+    exit(ret)
 
 if __name__ == "__main__":
     main(sys.argv)
