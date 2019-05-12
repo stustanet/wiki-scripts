@@ -279,6 +279,9 @@ def do_minor_upgrade():
     step('Updating Submodules')
     ret = run_cmd('git submodule update --init --recursive')
     if ret:
+        # asking nicely didn't work...
+        ret = run_cmd('git submodule update --init --recursive --force')
+    if ret:
         fail('git submodule update failed')
 
     step('Updating Extensions (Composer)')
@@ -366,6 +369,9 @@ def do_major_upgrade():
 
     step('Updating Submodules')
     ret = run_cmd('git submodule update --init --recursive')
+    if ret:
+        # asking nicely didn't work...
+        ret = run_cmd('git submodule update --init --recursive --force')
     if ret:
         fail('git submodule update failed')
 
