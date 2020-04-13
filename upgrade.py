@@ -164,9 +164,15 @@ def check_git_module_update(subdir):
     remote = get_cmd('git rev-parse @{u}', cwd=git_dir)[0]
     return local != remote
 
-def update_git_module(subdir):
+def update_git_module(subdir, version=None):
     git_dir = wiki_dir+subdir+'/'
-    ret = run_cmd('git pull', cwd=git_dir)
+    
+    if version:
+        upgrade_cmd = 'git pull && git checkout '+version
+        ret = run_cmd(upgrade_cmd, cwd=git_dir)
+    else:
+        ret = run_cmd('git pull', cwd=git_dir)
+    
     if ret:
         warn('git pull failed for '+subdir)
         return ret
@@ -175,20 +181,20 @@ def update_git_module(subdir):
         warn('failed to update submodules')
         return ret
 
-def update_extensions_git():
+def update_extensions_git(version=None):
     error = 0
     for ext in extensions_git:
         info('Updating '+ext)
-        ret = update_git_module('extensions/'+ext)
+        ret = update_git_module('extensions/'+ext, version)
         if ret:
             error = 1
     return error
 
-def update_skins_git():
+def update_skins_git(version=None):
     error = 0
     for skin in skins_git:
         info('Updating '+skin)
-        ret = update_git_module('skins/'+skin)
+        ret = update_git_module('skins/'+skin, version)
         if ret:
             error = 1
     return error
@@ -381,12 +387,12 @@ def do_major_upgrade():
         fail('composer update failed')
 
     step('Updating Extensions (git)')
-    ret = update_extensions_git()
+    ret = update_extensions_git(new_version)
     if ret:
         fail('updating extensions failed')
 
     step('Updating Skins (git)')
-    ret = update_skins_git()
+    ret = update_skins_git(new_version)
     if ret:
         fail('updating skins failed')
 
