@@ -15,20 +15,15 @@
 # Complete rewrite in python3 using the API, 04/2018
 #     J. Schmidt <js@stusta.net>
 
+import smtplib
 import sys
+import urllib.parse
+from email.message import EmailMessage
+from email.utils import localtime
 
-# retrieving and parsing wiki pages
 import mwclient
 from bs4 import BeautifulSoup
 
-# formatting
-import textwrap
-import urllib.parse
-
-# sending the email
-import smtplib
-from email.message import EmailMessage
-from email.utils import localtime
 
 def format_news(entry, page):
     content = page.text()
@@ -45,13 +40,13 @@ def format_news(entry, page):
             end = ""
             location = ""
             lines = item.splitlines()
-            for l in lines:
-                if l.startswith("|von="):
-                    start = l[5:]
-                elif l.startswith("|bis="):
-                    end = l[5:]
-                elif l.startswith("|Ort="):
-                    location = l[5:]
+            for line in lines:
+                if line.startswith("|von="):
+                    start = line[5:]
+                elif line.startswith("|bis="):
+                    end = line[5:]
+                elif line.startswith("|Ort="):
+                    location = line[5:]
             if start != "":
                 body += "Datum: " + start
                 if end != "":
@@ -60,30 +55,20 @@ def format_news(entry, page):
             if location != "":
                 body += "Ort: " + location + "\n"
         else:
-            text += item+"\n"
+            text += item + "\n"
 
     body += "Zusammenfassung:\n"
     body += entry['Zusammenfassung']
     body += "\n\n\n"
 
-    text = ''.join(BeautifulSoup(text, "html.parser").findAll(text=True)).strip()
+    text = ''.join(BeautifulSoup(
+        text, "html.parser").findAll(text=True)).strip()
     body += text
 
     body += "\n\n\n"
-    body += "Quelle: https://wiki.stusta.de/"+urllib.parse.quote(entry['Page'].replace(" ", "_"))
+    body += "Quelle: https://wiki.stusta.de/" + \
+        urllib.parse.quote(entry['Page'].replace(" ", "_"))
     body += "\n\n-- \nMehr Informationen: https://info.stusta.de\n"
-    return body
-
-    if c['isdate']:
-        tmp.write(c['startdate'].encode('utf-8'))
-        tmp.write(" bis ")
-        tmp.write(c['enddate'].encode('utf-8'))
-        tmp.write("\n")
-        tmp.write(c['location'].encode('utf-8'))
-    tmp.write("\n\n")
-    tmp.write(c['text'].encode('utf-8'))
-    tmp.write()
-
     return body
 
 
@@ -96,20 +81,22 @@ def send_mail(subject, author, body):
     msg['from'] = author + " <no-reply@mail.stusta.de>"
     msg['to'] = "announce@lists.stusta.de"
     msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.de>"
-    s = smtplib.SMTP('mail.stusta.de')
-    s.send_message(msg)
-    s.quit()
 
-def main(args=sys.argv):
+    smtp = smtplib.SMTP('mail.stusta.de')
+    smtp.send_message(msg)
+    smtp.quit()
+
+
+def main():
     site = mwclient.Site('wiki.stusta.de', path='/')
 
     results = site.get('cargoquery',
-        tables = 'News',
-        fields = '_pageName=Page,Titel,Autor,Zusammenfassung,Datum',
-        where = 'Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(HOUR,Datum,NOW())<1',
-        order_by = 'Datum ASC',
-        format = 'json',
-    )
+                       tables='News',
+                       fields='_pageName=Page,Titel,Autor,Zusammenfassung,Datum',
+                       where='Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(HOUR,Datum,NOW())<1',
+                       order_by='Datum ASC',
+                       format='json',
+                       )
 
     for res in results['cargoquery']:
         entry = res['title']
@@ -117,7 +104,9 @@ def main(args=sys.argv):
         if author == "":
             author = "Infoseite"
         subject = entry['Titel']
-        send_mail(subject, author, format_news(entry, site.pages[entry['Page']]))
+        send_mail(subject, author, format_news(
+            entry, site.pages[entry['Page']]))
+
 
 if __name__ == '__main__':
     sys.exit(main())
