@@ -1,68 +1,77 @@
-#! /usr/bin/env python2
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import mwclient, ConfigParser
-import urllib2
-import cgi
-from datetime import datetime
-from datetime import date
+
+import configparser
 import json
 import locale
 import os
+import sys
+import urllib.request
+from datetime import date
+from datetime import datetime
 
-wikiText_de = '''
+import mwclient
+
+WIKITEXT_DE = '''
 |style="vertical-align:bottom;"| %s
 |style="text-align:right;"| %s - %s Uhr
-''' 
-
-wikiText_en = '''
-|style="vertical-align:bottom;"| %s
-|style="text-align:right;"| from %s to %s 
 '''
 
-special = {"\xc4": "Ä", "\xe4": "ä", "\xd6" : "Ö", "\xf6" : "ö", "\xdc" : "ü", "\xfc" : "ü", "\xdf" : "ß"} 
+WIKITEXT_EN = '''
+|style="vertical-align:bottom;"| %s
+|style="text-align:right;"| from %s to %s
+'''
 
-def convertDate(obj):
-	obj['start'] = datetime.fromtimestamp(obj['start'])
-	obj['end'] = datetime.fromtimestamp(obj['end'])
-	return obj
+SPECIAL = {"\xc4": "Ä", "\xe4": "ä", "\xd6": "Ö",
+           "\xf6": "ö", "\xdc": "ü", "\xfc": "ü", "\xdf": "ß"}
 
-def wikifyDate(obj, wikiText):
-	text = (wikiText % (obj['start'].strftime('%A, %d. %B %Y'), obj['start'].strftime('%H:%M'), obj['end'].strftime('%H:%M')))
-	for key in special.keys(): 
-		text = text.replace(key, special[key]) 	
-	return text
 
-config = ConfigParser.RawConfigParser()
-config.read(os.path.dirname(os.path.realpath(__file__)) + '/sss.ini')
-cfg = config.get
+def convert_date(obj):
+    obj['start'] = datetime.fromtimestamp(obj['start'])
+    obj['end'] = datetime.fromtimestamp(obj['end'])
+    return obj
 
-opener = urllib2.build_opener()
-f = opener.open(cfg('sss', 'url'))
 
-page = f.read()
+def wikify_date(obj, wiki_text):
+    text = (wiki_text % (obj['start'].strftime('%A, %d. %B %Y'), obj[
+            'start'].strftime('%H:%M'), obj['end'].strftime('%H:%M')))
+    for key in SPECIAL:
+        text = text.replace(key, SPECIAL[key])
+    return text
 
-appointments = [convertDate(x) for x in json.loads(page)]
 
-site = mwclient.Site((cfg('mwclient', 'schema'), cfg('mwclient', 'site')), path=cfg('mwclient', 'path'))
-site.login(cfg('mwclient', 'user'), cfg('mwclient', 'pass'))
+def main():
+    config = configparser.RawConfigParser()
+    config.read(os.path.dirname(os.path.realpath(__file__)) + '/sss.ini')
+    cfg = config.get
 
-# deutsche version
+    opener = urllib.request.build_opener()
+    page = opener.open(cfg('sss', 'url')).read()
 
-locale.setlocale(locale.LC_TIME, "de_DE")
-wikiLines = [wikifyDate(x, wikiText_de) for x in appointments]
+    appointments = [convert_date(x) for x in json.loads(page)]
 
-page = site.Pages['Vorlage:Sprechstunden']
-page.edit()
+    site = mwclient.Site(cfg('mwclient', 'site'), path=cfg('mwclient', 'path'))
+    site.login(cfg('mwclient', 'user'), cfg('mwclient', 'pass'))
 
-page.save("{|" + "|-".join(wikiLines) + "|}" , summary = 'Sprechstunden ' + date.today().strftime('%Y-%m-%d'))
+    # deutsche version
 
-# englische version
+    locale.setlocale(locale.LC_TIME, "de_DE")
+    wiki_lines = [wikify_date(x, WIKITEXT_DE) for x in appointments]
 
-locale.setlocale(locale.LC_TIME, "en_US")
-wikiLines = [wikifyDate(x, wikiText_en) for x in appointments]
+    page = site.Pages['Vorlage:Sprechstunden']
+    page.edit("{|" + "|-".join(wiki_lines) + "|}",
+              summary='Sprechstunden ' + date.today().strftime('%Y-%m-%d'))
 
-page = site.Pages['Vorlage:Sprechstunden/en']
-page.edit()
+    # englische version
 
-page.save("{|" + "|-".join(wikiLines) + "|}" , summary = 'Sprechstunden ' + date.today().strftime('%Y-%m-%d'))
+    locale.setlocale(locale.LC_TIME, "en_US")
+    wiki_lines = [wikify_date(x, WIKITEXT_EN) for x in appointments]
+
+    page = site.Pages['Vorlage:Sprechstunden/en']
+    page.edit("{|" + "|-".join(wiki_lines) + "|}",
+              summary='Sprechstunden ' + date.today().strftime('%Y-%m-%d'))
+
+
+if __name__ == '__main__':
+    sys.exit(main())
