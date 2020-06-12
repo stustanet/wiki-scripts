@@ -109,14 +109,14 @@ class MediaWikiUpdater:
                 print('[FAIL] ' + msg)
         else:
             print('\x1b[40m\x1b[91mFAILED!\x1b[0m: ' + msg)
-        exit(-1)
+        sys.exit(-1)
 
     def success(self, msg, code):
         if self.out_simple:
             print('[SUCCESS] ' + msg)
         else:
             print('\x1b[40m\x1b[92mSUCCESS\x1b[0m: ' + msg)
-        exit(code)
+        sys.exit(code)
 
     def get_cmd(self, cmd, cwd=None):
         if not cwd:
@@ -501,7 +501,7 @@ def main(args):
         print('new major version available!')
         ret = 2
     updater.do_minor_upgrade()
-    exit(ret)
+    sys.exit(ret)
 
 
 if __name__ == "__main__":
