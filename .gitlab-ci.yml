@@ -1,0 +1,48 @@
+image: python:3.8-buster
+
+stages:
+  - test
+
+variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - .venv
+
+# PEP8 style conformance
+flake8:
+  stage: test
+  before_script:
+    - pip install virtualenv
+    - virtualenv -q .venv
+    - source .venv/bin/activate
+    - pip install flake8
+  script:
+    - flake8 --max-line-length=120 --exclude=.venv .
+
+# general linter
+pylint:
+  stage: test
+  before_script:
+    - pip install virtualenv
+    - virtualenv -q .venv
+    - source .venv/bin/activate
+    - pip install pylint
+    - shopt -s globstar
+  script:
+    - pylint -d C0111,C0301,C0330,E0401,R0902,R0904,R0912,R0914,R0915,W0108,W0703 ./**/*.py
+  allow_failure: true
+
+# security linter
+bandit:
+  stage: test
+  before_script:
+    - pip install virtualenv
+    - virtualenv -q .venv
+    - source .venv/bin/activate
+    - pip install bandit
+  script:
+    - bandit --skip B404,B602,B607 --exclude /.venv/ -r .
+  allow_failure: true # TODO: remove
