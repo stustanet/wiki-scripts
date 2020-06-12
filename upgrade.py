@@ -38,7 +38,7 @@ import requests
 
 
 class MediaWikiUpdater:
-    """docstring for ClassName"""
+    """MediaWikiUpdater is a utility for automatic updates of MediaWiki"""
 
     def __init__(self, out_simple=False):
         config = configparser.RawConfigParser()
