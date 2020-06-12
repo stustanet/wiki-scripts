@@ -1,5 +1,6 @@
 [Unit]
 Description=Wiki Jobs Runner
+OnFailure=status-email-user@%n.service
 
 [Service]
 Type=simple
