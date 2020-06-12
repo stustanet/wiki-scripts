@@ -25,416 +25,484 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import sys, os, re
+import sys
+import os
+import re
 import configparser
 import subprocess
 import datetime
 import argparse
-import requests
 import time
 
-config = configparser.RawConfigParser()
-config.read(os.path.dirname(os.path.realpath(__file__)) + '/upgrade.ini')
-cfg = config.get
+import requests
 
-wiki_dir = cfg('wiki', 'dir')
-db_dump_dir = cfg('backup', 'db_dump_dir')
-bup_dir = cfg('backup', 'bup_dir')
-bup_idx = cfg('backup', 'bup_idx')
-composer_home = cfg('env', 'composer_home')
-php_service = cfg('env', 'php_service')
-proxy = cfg('env', 'proxy')
-extensions_dir = wiki_dir+'extensions/'
-extensions_git = cfg('wiki', 'extensions_git').split(',')
-extensions = [sub for sub in os.listdir(extensions_dir) if os.path.isdir(os.path.join(extensions_dir, sub))]
-skins_dir = wiki_dir+'skins/'
-skins_git = cfg('wiki', 'skins_git').split(',')
-skins = [sub for sub in os.listdir(skins_dir) if os.path.isdir(os.path.join(skins_dir, sub))]
 
-# Simple output for non-terminal?
-out_simple = False
+class MediaWikiUpdater:
+    """docstring for ClassName"""
 
-def log(msg):
-    print(msg)
+    def __init__(self, out_simple=False):
+        config = configparser.RawConfigParser()
+        config.read(os.path.dirname(
+            os.path.realpath(__file__)) + '/upgrade.ini')
+        cfg = config.get
 
-def step(msg):
-    if out_simple:
-        print('\n:: '+msg+' ::')
-        return
-    print('\n\x1b[40m\x1b[95m'+msg+' ...\x1b[0m')
+        self.wiki_dir = cfg('wiki', 'dir')
 
-def info(k, v=''):
-    if out_simple:
-        if v == '':
-            print('[INFO] '+k)
+        self.db_name = cfg('backup', 'db_name')
+        self.db_user = cfg('backup', 'db_user')
+        self.db_pass = cfg('backup', 'db_pass')
+
+        self.db_dump_dir = cfg('backup', 'db_dump_dir')
+        self.bup_dir = cfg('backup', 'bup_dir')
+        self.bup_idx = cfg('backup', 'bup_idx')
+
+        self.composer_home = cfg('env', 'composer_home')
+        self.php_service = cfg('env', 'php_service')
+        self.proxy = cfg('env', 'proxy')
+
+        self.extensions_dir = self.wiki_dir + 'extensions/'
+        self.extensions_git = cfg('wiki', 'extensions_git').split(',')
+        self.extensions = [sub for sub in os.listdir(
+            self.extensions_dir) if os.path.isdir(os.path.join(self.extensions_dir, sub))]
+
+        self.skins_dir = self.wiki_dir + 'skins/'
+        self.skins_git = cfg('wiki', 'skins_git').split(',')
+        self.skins = [sub for sub in os.listdir(
+            self.skins_dir) if os.path.isdir(os.path.join(self.skins_dir, sub))]
+
+        self.check_url = cfg('wiki', 'check_url')
+
+        # Simple output for non-terminal?
+        self.out_simple = out_simple
+
+    @staticmethod
+    def log(msg):
+        print(msg)
+
+    def step(self, msg):
+        if self.out_simple:
+            print('\n:: ' + msg + ' ::')
+            return
+        print('\n\x1b[40m\x1b[95m' + msg + ' ...\x1b[0m')
+
+    def info(self, key, value=''):
+        if self.out_simple:
+            if key == '':
+                print('[INFO] ' + key)
+            else:
+                print('[INFO] ' + key + ': ' + value)
+            return
+        if value == '':
+            print('\x1b[94m' + key + '\x1b[0m')
+            return
+        print('\x1b[94m' + key + '\x1b[0m: ' + value)
+
+    def warn(self, msg):
+        if self.out_simple:
+            print('[WARN] ' + msg)
         else:
-            print('[INFO] '+k+': '+v)
-        return
-    if v == '':
-        print('\x1b[94m' + k + '\x1b[0m')
-        return
-    print('\x1b[94m' + k + '\x1b[0m: ' + v)
+            print('\x1b[40m\x1b[93mWARN\x1b[0m: ' + msg)
 
-def warn(msg):
-    if out_simple:
-        print('[WARN] '+msg)
-    else:
-        print('\x1b[40m\x1b[93mWARN\x1b[0m: '+msg)
+    def fail(self, msg=''):
+        if self.out_simple:
+            if msg != '':
+                print('[FAIL] ' + msg)
+        else:
+            print('\x1b[40m\x1b[91mFAILED!\x1b[0m: ' + msg)
+        exit(-1)
 
-def fail(msg=''):
-    if out_simple:
-        if msg != '':
-            print('[FAIL] '+msg)
-    else:
-        print('\x1b[40m\x1b[91mFAILED!\x1b[0m: '+msg)
-    exit(-1)
+    def success(self, msg, code):
+        if self.out_simple:
+            print('[SUCCESS] ' + msg)
+        else:
+            print('\x1b[40m\x1b[92mSUCCESS\x1b[0m: ' + msg)
+        exit(code)
 
-def success(msg, code):
-    if out_simple:
-        print('[SUCCESS] '+msg)
-    else:
-        print('\x1b[40m\x1b[92mSUCCESS\x1b[0m: '+msg)
-    exit(code)
+    def get_cmd(self, cmd, cwd=None):
+        if not cwd:
+            cwd = self.wiki_dir
+        sys.stdout.flush()
+        out = subprocess.Popen(cmd, cwd=cwd, shell=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+        return (out[0].decode('utf-8').strip(), out[1].decode('utf-8').strip())
 
-def get_cmd(cmd, cwd=wiki_dir):
-    sys.stdout.flush()
-    out = subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    return (out[0].decode('utf-8').strip(), out[1].decode('utf-8').strip())
+    def run_cmd(self, cmd, cwd=None):
+        if not cwd:
+            cwd = self.wiki_dir
+        sys.stdout.flush()
+        return subprocess.Popen(cmd, cwd=cwd, shell=True).wait()
 
-def run_cmd(cmd, cwd=wiki_dir):
-    sys.stdout.flush()
-    return subprocess.Popen(cmd, cwd=cwd, shell=True).wait()
+    @staticmethod
+    def get_branches(data):
+        return re.findall('origin/(REL[0-9]_[0-9][0-9]?)\\n', data, re.S)
 
-def get_branches(data):
-    return re.findall('origin/(REL[0-9]_[0-9][0-9]?)\\n', data, re.S)
+    @staticmethod
+    def __branch_version(version_str):
+        if len(version_str) == 7:
+            return int(version_str[3]) * 100 + int(version_str[5]) * 10 + int(version_str[6])
+        if len(version_str) == 6:
+            return int(version_str[3]) * 100 + int(version_str[5])
+        return -1
 
-def branch_version(s):
-    if len(s) == 7:
-        return int(s[3])*100 + int(s[5])*10 + int(s[6])
-    if len(s) == 6:
-        return int(s[3])*100 + int(s[5])
-    return -1
+    def version_is_stable(self, version):
+        if version.startswith('REL'):
+            version = version[3:].replace('_', '.') + ".0"
+        # check if 1.xx.0 was tagged (initial stable release)
+        return self.get_cmd('git tag -l ' + version)[0] == version
 
-def version_is_stable(version):
-    if version.startswith('REL'):
-        version = version[3:].replace('_', '.') + ".0"
-    # check if 1.xx.0 was tagged (initial stable release)
-    return get_cmd('git tag -l ' + version)[0] == version
+    def get_current_version(self):
+        return self.get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
-def get_current_version():
-    return get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
+    def get_newest_version(self, stable=True):
+        process = subprocess.Popen(
+            'git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
+        branches = sorted(self.get_branches(process.decode("utf-8")),
+                          key=lambda v: self.__branch_version(v))
+        if not branches:
+            return None
+        i = len(branches) - 1
+        branch = branches[i]
+        if stable:
+            while not self.version_is_stable(branch):
+                self.info(branch + " is not stable yet.")
+                if i == 0:
+                    return None
+                i -= 1
+                branch = branches[i]
+        return branch
 
-def get_newest_version(stable=True):
-    process = subprocess.Popen('git branch -r', cwd=wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
-    branches = sorted(get_branches(process.decode("utf-8")), key=lambda v: branch_version(v))
-    if len(branches) < 1:
-        return None
-    i = len(branches)-1
-    branch = branches[i]
-    if stable:
-        while not version_is_stable(branch):
-            info(branch + " is not stable yet.")
-            if i is 0:
-                return None
-            i -= 1
-            branch = branches[i]
-    return branch
+    def backup_db(self):
+        now = datetime.datetime.now()
+        backup_name = now.strftime("wiki_%Y-%m-%d_%H-%M")
+        file = self.db_dump_dir + backup_name + '.sql.gz'
+        return self.run_cmd('mysqldump' +
+                            ' -u ' + self.db_user +
+                            ' --password=' + self.db_pass +
+                            ' ' + self.db_name + ' | gzip > ' + file)
 
-def backup_db():
-    now = datetime.datetime.now()
-    backup_name = now.strftime("wiki_%Y-%m-%d_%H-%M")
-    db_name = cfg('backup', 'db_name')
-    db_user = cfg('backup', 'db_user')
-    db_pass = cfg('backup', 'db_pass')
-    file = db_dump_dir + backup_name + '.sql.gz'
-    return run_cmd('mysqldump -u '+db_user+' --password='+db_pass+' '+db_name+' | gzip > '+file)
+    def backup_files(self):
+        cmd = 'BUP_DIR=' + self.bup_dir + ' bup save -n ' + \
+            self.bup_idx + ' -c -q ' + self.wiki_dir + ''
+        self.info(cmd)
+        return self.run_cmd(cmd)
 
-def backup_files():
-    cmd = 'BUP_DIR='+bup_dir+' bup save -n '+bup_idx+' -c -q '+wiki_dir+''
-    info(cmd)
-    return run_cmd(cmd)
+    def check_git_module_update(self, subdir, version=None):
+        git_dir = self.wiki_dir + subdir + '/'
 
-def check_git_module_update(subdir):
-    git_dir = wiki_dir+subdir+'/'
-    ret = run_cmd('git remote update', cwd=git_dir)
-    if ret:
-        warn('git pull failed for '+subdir+'. Skipping...')
-        return False
-    local = get_cmd('git rev-parse @', cwd=git_dir)[0]
-    remote = get_cmd('git rev-parse @{u}', cwd=git_dir)[0]
-    return local != remote
+        if version:
+            upgrade_cmd = 'git pull && git checkout '+version
+            ret = self.run_cmd(upgrade_cmd, cwd=git_dir)
+        else:
+            ret = self.run_cmd('git pull', cwd=git_dir)
 
-def update_git_module(subdir, version=None):
-    git_dir = wiki_dir+subdir+'/'
-    
-    if version:
-        upgrade_cmd = 'git pull && git checkout '+version
-        ret = run_cmd(upgrade_cmd, cwd=git_dir)
-    else:
-        ret = run_cmd('git pull', cwd=git_dir)
-    
-    if ret:
-        warn('git pull failed for '+subdir)
-        return ret
-    ret = run_cmd('git submodule update --init --recursive', cwd=git_dir)
-    if ret:
-        warn('failed to update submodules')
-        return ret
-
-def update_extensions_git(version=None):
-    error = 0
-    for ext in extensions_git:
-        info('Updating '+ext)
-        ret = update_git_module('extensions/'+ext, version)
         if ret:
-            error = 1
-    return error
+            self.warn('git pull failed for ' + subdir + '. Skipping...')
+            return False
+        local = self.get_cmd('git rev-parse @', cwd=git_dir)[0]
+        remote = self.get_cmd('git rev-parse @{u}', cwd=git_dir)[0]
+        return local != remote
 
-def update_skins_git(version=None):
-    error = 0
-    for skin in skins_git:
-        info('Updating '+skin)
-        ret = update_git_module('skins/'+skin, version)
+    def update_git_module(self, subdir, version):
+        git_dir = self.wiki_dir + subdir + '/'
+
+        if version:
+            upgrade_cmd = 'git pull && git checkout '+version
+        else:
+            upgrade_cmd = 'git pull'
+
+        ret = self.run_cmd(upgrade_cmd, cwd=git_dir)
         if ret:
-            error = 1
-    return error
+            self.warn('git pull failed for ' + subdir)
+            return ret
+        ret = self.run_cmd('git submodule update --init --recursive', cwd=git_dir)
+        if ret:
+            self.warn('failed to update submodules')
+        return ret
 
-def check_minor_upgrade():
-    need_update = False
+    def update_extensions_git(self, version=None):
+        error = 0
+        for ext in self.extensions_git:
+            self.info('Updating ' + ext)
+            ret = self.update_git_module('extensions/' + ext, version)
+            if ret:
+                error = 1
+        return error
 
-    step('Checking for mediawiki update')
-    ret = run_cmd('git remote update')
-    if ret:
-        fail('could not update get remote')
-    local = get_cmd('git rev-parse @')[0]
-    info('local', local)
-    remote = get_cmd('git rev-parse @{u}')[0]
-    info('remote', remote)
-    base = get_cmd('git merge-base @ @{u}')[0]
-    info('base', base)
-    if local == remote:
-        log('Up-to-date')
-    elif local != base:
-        fail('Branch was modified. Can not pull!')
-    else:
-        need_update = True
+    def update_skins_git(self, version=None):
+        error = 0
+        for skin in self.skins_git:
+            self.info('Updating ' + skin)
+            ret = self.update_git_module('skins/' + skin, version)
+            if ret:
+                error = 1
+        return error
 
-    step('Checking for Composer updates')
-    ret = get_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
-    ret = re.findall('([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
-    if ret:
-        composer_changes = int(ret[0][1])+int(ret[0][2])
-        if composer_changes > 1:
-            info(str(composer_changes)+' composer changes')
-            need_update = True
+    def check_minor_upgrade(self):
+        need_update = False
 
-    step('Checking for extension update')
-    for ext in extensions_git:
-        has_updates = check_git_module_update('extensions/'+ext)
-        if has_updates:
-            info('New commits available for extension: '+ext)
-            need_update = True
+        log = self.log
+        info = self.info
+        step = self.step
+        fail = self.fail
+        get_cmd = self.get_cmd
+        run_cmd = self.run_cmd
+
+        step('Checking for mediawiki update')
+        ret = run_cmd('git remote update')
+        if ret:
+            fail('could not update get remote')
+        local = get_cmd('git rev-parse @')[0]
+        info('local', local)
+        remote = get_cmd('git rev-parse @{u}')[0]
+        info('remote', remote)
+        base = get_cmd('git merge-base @ @{u}')[0]
+        info('base', base)
+        if local == remote:
+            log('Up-to-date')
+        elif local != base:
+            fail('Branch was modified. Can not pull!')
         else:
-            info('Up-to-date: '+ext)
-
-    step('Checking for skin update')
-    for skin in skins_git:
-        has_updates = check_git_module_update('skins/'+skin)
-        if has_updates:
-            info('New commits available for skin: '+skin)
             need_update = True
-        else:
-            info('Up-to-date: '+skin)
 
-    if not need_update:
-        log('Up-to-date')
-    return need_update
+        step('Checking for Composer updates')
+        ret = get_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
+                      ' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
+        ret = re.findall(
+            '([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
+        if ret:
+            composer_changes = int(ret[0][1]) + int(ret[0][2])
+            if composer_changes > 1:
+                info(str(composer_changes) + ' composer changes')
+                need_update = True
 
-def do_minor_upgrade():
-    do_upgrade = check_minor_upgrade()
-    if not do_upgrade:
-        return
+        step('Checking for extension update')
+        for ext in self.extensions_git:
+            has_updates = self.check_git_module_update('extensions/' + ext)
+            if has_updates:
+                info('New commits available for extension: ' + ext)
+                need_update = True
+            else:
+                info('Up-to-date: ' + ext)
 
-    info('Updates available. Proceeding...\n')
+        step('Checking for skin update')
+        for skin in self.skins_git:
+            has_updates = self.check_git_module_update('skins/' + skin)
+            if has_updates:
+                info('New commits available for skin: ' + skin)
+                need_update = True
+            else:
+                info('Up-to-date: ' + skin)
 
-    step('Checking wiki dir')
-    ret = get_cmd('git status --porcelain --ignore-submodules=all -uno')[0]
-    if ret != '':
-        fail('Can not update. Wiki dir has changes! (run git status -uno)')
+        if not need_update:
+            self.log('Up-to-date')
+        return need_update
 
-    step('Stop PHP Service')
-    ret = run_cmd('sudo /bin/systemctl stop '+php_service)
-    if ret:
-        fail('Failed to stop PHP Service')
+    def do_minor_upgrade(self):
+        do_upgrade = self.check_minor_upgrade()
+        if not do_upgrade:
+            return
 
-    step('Backing up Database')
-    ret = backup_db()
-    if ret:
-        fail('Database Backup failed')
+        info = self.info
+        step = self.step
+        fail = self.fail
+        success = self.success
+        run_cmd = self.run_cmd
+        get_cmd = self.get_cmd
 
-    step('Backing up Files (without uploads)')
-    ret = backup_files()
-    if ret:
-        fail('Files Backup failed')
+        info('Updates available. Proceeding...\n')
 
-    step('Pulling new commits')
-    ret = run_cmd('git pull')
-    if ret:
-        fail('git pull failed')
+        step('Checking wiki dir')
+        ret = get_cmd('git status --porcelain --ignore-submodules=all -uno')[0]
+        if ret != '':
+            fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
-    step('Updating Submodules')
-    ret = run_cmd('git submodule update --init --recursive')
-    if ret:
-        # asking nicely didn't work...
-        ret = run_cmd('git submodule update --init --recursive --force')
-    if ret:
-        fail('git submodule update failed')
+        step('Stop PHP Service')
+        ret = run_cmd('sudo /bin/systemctl stop ' + self.php_service)
+        if ret:
+            fail('Failed to stop PHP Service')
 
-    step('Updating Extensions (Composer)')
-    ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' COMPOSER_HOME='+composer_home+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
-    if ret:
-        fail('composer update failed')
+        step('Backing up Database')
+        ret = self.backup_db()
+        if ret:
+            fail('Database Backup failed')
 
-    step('Updating Extensions (git)')
-    ret = update_extensions_git()
-    if ret:
-        fail('updating extensions failed')
+        step('Backing up Files (without uploads)')
+        ret = self.backup_files()
+        if ret:
+            fail('Files Backup failed')
 
-    step('Updating Skins (git)')
-    ret = update_skins_git()
-    if ret:
-        fail('updating skins failed')
+        step('Pulling new commits')
+        ret = run_cmd('git pull')
+        if ret:
+            fail('git pull failed')
 
-    step('Run update.php')
-    ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')
-    if ret:
-        fail('update.php failed')
+        step('Updating Submodules')
+        ret = run_cmd('git submodule update --init --recursive')
+        if ret:
+            # asking nicely didn't work...
+            ret = run_cmd('git submodule update --init --recursive --force')
+        if ret:
+            fail('git submodule update failed')
 
-    step('Start PHP Service')
-    ret = run_cmd('sudo /bin/systemctl start '+php_service)
-    if ret:
-        fail('Failed to start PHP Service')
+        step('Updating Extensions (Composer)')
+        ret = run_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
+                      ' COMPOSER_HOME=' + self.composer_home +
+                      ' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
+        if ret:
+            fail('composer update failed')
 
-    # load Main page to verify status code and fill caches
-    step('Making test request')
-    time.sleep(3) # give the server a short time to start
-    req = requests.get(cfg('wiki', 'check_url'))
-    if req.status_code != 200:
-        fail('Check URL returned status code '+str(req.status_code))
+        step('Updating Extensions (git)')
+        ret = self.update_extensions_git()
+        if ret:
+            fail('updating extensions failed')
 
-    success('Done.', 1) # non-zero return code to signal that we made changes
+        step('Updating Skins (git)')
+        ret = self.update_skins_git()
+        if ret:
+            fail('updating skins failed')
 
-def check_major_upgrade():
-    step('Checking for new version')
-    newest_version = get_newest_version()
-    if newest_version is None:
-        fail('no git branches found')
-    info('newest version', newest_version)
+        step('Run update.php')
+        ret = run_cmd('php update.php --quick', cwd=self.wiki_dir + 'maintenance/')
+        if ret:
+            fail('update.php failed')
 
-    current_version = get_current_version()
-    info('current version', current_version)
+        step('Start PHP Service')
+        ret = run_cmd('sudo /bin/systemctl start ' + self.php_service)
+        if ret:
+            fail('Failed to start PHP Service')
 
-    if branch_version(newest_version) <= branch_version(current_version):
-        log('up-to-date')
-        return False
-    return True
+        # load Main page to verify status code and fill caches
+        step('Making test request')
+        time.sleep(3)  # give the server a short time to start
+        req = requests.get(self.check_url)
+        if req.status_code != 200:
+            fail('Check URL returned status code ' + str(req.status_code))
 
-def do_major_upgrade():
-    do_upgrade = check_major_upgrade()
-    if not do_upgrade:
-        return
+        # non-zero return code to signal that we made changes
+        success('Done.', 1)
 
-    info('New version available. Proceeding...\n')
+    def check_major_upgrade(self):
+        self.step('Checking for new version')
+        newest_version = self.get_newest_version()
+        if newest_version is None:
+            self.fail('no git branches found')
+        self.info('newest version', newest_version)
 
-    step('Checking wiki dir')
-    ret = get_cmd('git status --porcelain -uno --ignore-submodules=all')[0]
-    if ret != '':
-        fail('Can not update. Wiki dir has changes! (run git status -uno)')
+        current_version = self.get_current_version()
+        self.info('current version', current_version)
 
-    step('Stop PHP Service')
-    ret = run_cmd('sudo /bin/systemctl stop '+php_service)
-    if ret:
-        fail('Failed to stop PHP Service')
+        if self.__branch_version(newest_version) <= self.__branch_version(current_version):
+            self.log('up-to-date')
+            return False
+        return True
 
-    step('Backing up Database')
-    ret = backup_db()
-    if ret:
-        fail('Database Backup failed')
+    def do_major_upgrade(self):
+        do_upgrade = self.check_major_upgrade()
+        if not do_upgrade:
+            return
 
-    step('Backing up Files (with uploads)')
-    ret = backup_files()
-    if ret:
-        fail('Files Backup failed')
+        info = self.info
+        step = self.step
+        fail = self.fail
+        success = self.success
+        get_cmd = self.get_cmd
+        run_cmd = self.run_cmd
 
-    step('Checkout new mediawiki branch')
-    new_version = get_newest_version()
-    upgrade_cmd = 'git pull && git checkout '+new_version
-    ret = run_cmd(upgrade_cmd)
-    if ret:
-        fail(upgrade_cmd+' failed!')
+        info('New version available. Proceeding...\n')
 
-    step('Updating Submodules')
-    ret = run_cmd('git submodule update --init --recursive')
-    if ret:
-        # asking nicely didn't work...
-        ret = run_cmd('git submodule update --init --recursive --force')
-    if ret:
-        fail('git submodule update failed')
+        step('Checking wiki dir')
+        ret = get_cmd('git status --porcelain -uno --ignore-submodules=all')[0]
+        if ret != '':
+            fail('Can not update. Wiki dir has changes! (run git status -uno)')
 
-    step('Updating Extensions (Composer)')
-    ret = run_cmd('https_proxy='+proxy+' http_proxy='+proxy+' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
-    if ret:
-        fail('composer update failed')
+        step('Stop PHP Service')
+        ret = run_cmd('sudo /bin/systemctl stop ' + self.php_service)
+        if ret:
+            fail('Failed to stop PHP Service')
 
-    step('Updating Extensions (git)')
-    ret = update_extensions_git(new_version)
-    if ret:
-        fail('updating extensions failed')
+        step('Backing up Database')
+        ret = self.backup_db()
+        if ret:
+            fail('Database Backup failed')
 
-    step('Updating Skins (git)')
-    ret = update_skins_git(new_version)
-    if ret:
-        fail('updating skins failed')
+        step('Backing up Files (with uploads)')
+        ret = self.backup_files()
+        if ret:
+            fail('Files Backup failed')
 
-    step('Run update.php')
-    ret = run_cmd('php update.php --quick', cwd=wiki_dir+'maintenance/')
-    if ret:
-        fail('update.php failed')
+        step('Checkout new mediawiki branch')
+        new_version = self.get_newest_version()
+        upgrade_cmd = 'git pull && git checkout ' + new_version
+        ret = run_cmd(upgrade_cmd)
+        if ret:
+            fail(upgrade_cmd + ' failed!')
 
-    step('Start PHP Service')
-    ret = run_cmd('sudo /bin/systemctl start '+php_service)
-    if ret:
-        fail('Failed to start PHP Service')
+        step('Updating Submodules')
+        ret = run_cmd('git submodule update --init --recursive')
+        if ret:
+            # asking nicely didn't work...
+            ret = run_cmd('git submodule update --init --recursive --force')
+        if ret:
+            fail('git submodule update failed')
 
-    # load Main page to verify status code and warum up HHVM
-    step('Making test request')
-    time.sleep(3) # give the server a short time to start HHVM
-    req = requests.get(cfg('wiki', 'check_url'))
-    if req.status_code != 200:
-        fail('Check URL returned status code '+str(req.status_code))
+        step('Updating Extensions (Composer)')
+        ret = run_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
+                      ' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
+        if ret:
+            fail('composer update failed')
 
-    success('Done.', 1) # non-zero return code to signal that we made changes
+        step('Updating Extensions (git)')
+        ret = self.update_extensions_git(new_version)
+        if ret:
+            fail('updating extensions failed')
+
+        step('Updating Skins (git)')
+        ret = self.update_skins_git(new_version)
+        if ret:
+            fail('updating skins failed')
+
+        step('Run update.php')
+        ret = run_cmd('php update.php --quick', cwd=self.wiki_dir + 'maintenance/')
+        if ret:
+            fail('update.php failed')
+
+        step('Start PHP Service')
+        ret = run_cmd('sudo /bin/systemctl start ' + self.php_service)
+        if ret:
+            fail('Failed to start PHP Service')
+
+        # load Main page to verify status code and warum up HHVM
+        step('Making test request')
+        time.sleep(3)  # give the server a short time to start HHVM
+        req = requests.get(self.check_url)
+        if req.status_code != 200:
+            fail('Check URL returned status code ' + str(req.status_code))
+
+        # non-zero return code to signal that we made changes
+        success('Done.', 1)
+
 
 def main(args):
-    global out_simple
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('--simple', help='use simple output for non-terminal', action='store_true')
-    parser.add_argument('--major', help='perform a major version upgrade', action='store_true')
+    parser.add_argument(
+        '--simple', help='use simple output for non-terminal', action='store_true')
+    parser.add_argument(
+        '--major', help='perform a major version upgrade', action='store_true')
     args = parser.parse_args()
 
-    out_simple = args.simple
+    updater = MediaWikiUpdater(out_simple=args.simple)
 
     if args.major:
-        do_major_upgrade()
+        updater.do_major_upgrade()
         return
 
     ret = 0
-    if check_major_upgrade():
-        log('new major version available!')
+    if updater.check_major_upgrade():
+        print('new major version available!')
         ret = 2
-    do_minor_upgrade()
+    updater.do_minor_upgrade()
     exit(ret)
+
 
 if __name__ == "__main__":
     main(sys.argv)
