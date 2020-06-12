@@ -45,4 +45,3 @@ bandit:
     - pip install bandit
   script:
     - bandit --skip B404,B602,B607 --exclude /.venv/ -r .
-  allow_failure: true # TODO: remove
