@@ -1,5 +1,4 @@
 [mwclient]
-schema=https
 site=wiki.stusta.de
 path=/
 user=Mensa-Bot
