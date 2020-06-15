@@ -33,7 +33,6 @@ pylint:
     - shopt -s globstar
   script:
     - pylint -d C0111,C0301,C0330,E0401,R0902,R0904,R0912,R0914,R0915,W0108,W0703 ./**/*.py
-  allow_failure: true
 
 # security linter
 bandit:
