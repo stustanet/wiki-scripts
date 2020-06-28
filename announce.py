@@ -81,9 +81,9 @@ def format_news(entry, page):
         event.end = endtime
         if location != "":
             event.location = location
-        text = page.text()
+        tmp = page.text()
         ms = [re.search(r"\|Zusammenfassung=(.*)", line)
-              for line in text.split('\n')]
+              for line in tmp.split('\n')]
         ms = [m for m in ms if m is not None]
         if len(ms) > 0:
             event.description = ms[0].groups()[0]
