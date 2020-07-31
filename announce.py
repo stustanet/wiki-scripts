@@ -120,7 +120,7 @@ def attach_calendar(msg, calendar):
 # send mail to announce list
 def send_mail(subject, author, body, calendar=None):
     from_addr = "no-reply@mail.stusta.de"
-    to_addr = "announce@stusta.de"
+    to_addr = "announce@lists.stusta.de"
     if calendar:
         msg = MIMEMultipart()
         msg['date'] = str(localtime())
