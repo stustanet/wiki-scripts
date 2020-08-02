@@ -20,7 +20,7 @@ flake8:
     - source .venv/bin/activate
     - pip install flake8
   script:
-    - flake8 --max-line-length=120 --exclude=.venv .
+    - flake8 --exclude=.venv .
 
 # general linter
 pylint:

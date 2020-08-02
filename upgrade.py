@@ -157,7 +157,7 @@ class MediaWikiUpdater:
         process = subprocess.Popen(
             'git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
         branches = sorted(self.get_branches(process.decode("utf-8")),
-                          key=lambda v: self.__branch_version(v))
+                          key=self.__branch_version)
         if not branches:
             return None
         i = len(branches) - 1

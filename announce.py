@@ -20,12 +20,9 @@ import smtplib
 import sys
 import urllib.parse
 from datetime import datetime, timedelta
-from email.message import EmailMessage
 from email.utils import make_msgid, formatdate, formataddr
-from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email import encoders
 
 import mwclient
 import pytz
@@ -122,7 +119,7 @@ def send_mail(subject, author, body, calendar=None):
     from_addr = "no-reply@stusta.mhn.de"
     from_domain = from_addr.split('@')[1]
     to_addr = "announce@lists.stusta.mhn.de"
-    
+
     msg = MIMEMultipart()
     msg['date'] = formatdate(localtime=True)
 
@@ -131,7 +128,7 @@ def send_mail(subject, author, body, calendar=None):
     msg['to'] = to_addr
     msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.de>"
     msg['Message-ID'] = make_msgid(domain=from_domain)
-        
+
     msg.attach(MIMEText(body, 'plain'))
 
     if calendar:
