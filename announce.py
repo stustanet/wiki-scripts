@@ -21,7 +21,7 @@ import sys
 import urllib.parse
 from datetime import datetime, timedelta
 from email.message import EmailMessage
-from email.utils import localtime
+from email.utils import make_msgid, formatdate, formataddr
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -119,24 +119,23 @@ def attach_calendar(msg, calendar):
 
 # send mail to announce list
 def send_mail(subject, author, body, calendar=None):
-    from_addr = "no-reply@mail.stusta.de"
-    to_addr = "announce@lists.stusta.de"
-    if calendar:
-        msg = MIMEMultipart()
-        msg['date'] = str(localtime())
-    else:
-        msg = EmailMessage()
-        msg['date'] = localtime()
+    from_addr = "no-reply@stusta.mhn.de"
+    from_domain = from_addr.split('@')[1]
+    to_addr = "announce@lists.stusta.mhn.de"
+    
+    msg = MIMEMultipart()
+    msg['date'] = formatdate(localtime=True)
+
     msg['subject'] = subject
-    msg['from'] = author + f" <{from_addr}>"
+    msg['from'] = formataddr((author, from_addr))
     msg['to'] = to_addr
     msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.de>"
+    msg['Message-ID'] = make_msgid(domain=from_domain)
+        
+    msg.attach(MIMEText(body, 'plain'))
 
     if calendar:
-        msg.attach(MIMEText(body, 'plain'))
         attach_calendar(msg, calendar)
-    else:
-        msg.set_content(body)
 
     smtp = smtplib.SMTP('mail.stusta.de')
     smtp.sendmail(from_addr, to_addr, msg.as_string())
