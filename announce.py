@@ -145,7 +145,7 @@ def main():
     results = site.get('cargoquery',
                        tables='News',
                        fields='_pageName=Page,Titel,Autor,Zusammenfassung,Datum',
-                       where='Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(HOUR,Datum,NOW())<1',
+                       where='Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(HOUR,NOW(),Datum)=0',
                        order_by='Datum ASC',
                        format='json',
                        )
