@@ -141,11 +141,13 @@ def send_mail(subject, author, body, calendar=None):
 
 def main():
     site = mwclient.Site('wiki.stusta.de', path='/')
-
+    
+    # get stustanet news which should be announce between 55 minutes ago and in 5 minutes
+    # If the script is run every hour, every announce is sent exactly once
     results = site.get('cargoquery',
                        tables='News',
                        fields='_pageName=Page,Titel,Autor,Zusammenfassung,Datum',
-                       where='Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(HOUR,NOW(),Datum)=0',
+                       where='Infoseite=1 AND Kategorie="StuStaNet" AND TIMESTAMPDIFF(MINUTE,NOW(),Datum)<=5 AND TIMESTAMPDIFF(MINUTE,NOW(),Datum)>-55',
                        order_by='Datum ASC',
                        format='json',
                        )
