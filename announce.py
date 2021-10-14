@@ -41,6 +41,7 @@ def event2cal(calendar):
     stustanet_calendar = client.calendar(url="https://cloud.stusta.de/remote.php/dav/calendars/012299/personal/")
     stustanet_calendar.save_event(str(calendar))
 
+
 def format_news(entry, page):
     content = page.text()
     content = content.replace("{{!}}", "")
