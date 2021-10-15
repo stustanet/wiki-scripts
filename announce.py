@@ -14,6 +14,8 @@
 #     C. Winter <christian.winter@stusta.net>
 # Complete rewrite in python3 using the API, 04/2018
 #     J. Schmidt <js@stusta.net>
+# Added nextcloud calendar integration
+#     T. Jülg <tj@stusta.de>
 
 import re
 import smtplib
@@ -28,6 +30,16 @@ import mwclient
 import pytz
 from bs4 import BeautifulSoup
 from ics import Event, Calendar
+
+import caldav
+import cal_pw
+
+
+def event2cal(calendar):
+    url = "https://cloud.stusta.de/remote.php/dav"
+    client = caldav.DAVClient(url=url, username=cal_pw.username, password=cal_pw.password)
+    stustanet_calendar = client.calendar(url="https://cloud.stusta.de/remote.php/dav/calendars/e00007/stustanet-ev/")
+    stustanet_calendar.save_event(str(calendar))
 
 
 def format_news(entry, page):
@@ -159,8 +171,11 @@ def main():
         if author == "":
             author = "Infoseite"
         subject = entry['Titel']
-        send_mail(subject, author, *format_news(
-            entry, site.pages[entry['Page']]))
+        body, calendar = format_news(entry, site.pages[entry['Page']])
+        # create event in stustanet calendar
+        event2cal(calendar)
+        # send mails to announce
+        send_mail(subject, author, body, calendar)
 
 
 if __name__ == '__main__':
