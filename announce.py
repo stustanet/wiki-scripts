@@ -38,7 +38,7 @@ import cal_pw
 def event2cal(calendar):
     url = "https://cloud.stusta.de/remote.php/dav"
     client = caldav.DAVClient(url=url, username=cal_pw.username, password=cal_pw.password)
-    stustanet_calendar = client.calendar(url="https://cloud.stusta.de/remote.php/dav/calendars/012299/personal/")
+    stustanet_calendar = client.calendar(url="https://cloud.stusta.de/remote.php/dav/calendars/e00007/stustanet-ev/")
     stustanet_calendar.save_event(str(calendar))
 
 
