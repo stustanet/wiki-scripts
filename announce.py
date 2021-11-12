@@ -119,8 +119,7 @@ def format_news(entry, page):
 
 
 def attach_calendar(msg, calendar):
-    ical_atch = MIMEText('text', 'calendar', 'utf-8')
-    ical_atch.set_payload(str(calendar).encode("utf-8"), 'utf-8')
+    ical_atch = MIMEText(str(calendar).encode("utf-8"), 'calendar', 'utf-8')
     ical_atch.add_header('Content-Disposition',
                          'attachment; filename="invite.ics"')
     msg.attach(ical_atch)
