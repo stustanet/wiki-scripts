@@ -30,7 +30,6 @@ import os
 import re
 import configparser
 import subprocess
-import datetime
 import argparse
 import time
 
@@ -53,8 +52,9 @@ class MediaWikiUpdater:
         self.db_pass = cfg('backup', 'db_pass')
 
         self.db_dump_dir = cfg('backup', 'db_dump_dir')
-        self.bup_dir = cfg('backup', 'bup_dir')
-        self.bup_idx = cfg('backup', 'bup_idx')
+
+        self.borg_dir = cfg('backup', 'borg_dir')
+        self.borg_base = cfg('backup', 'borg_base')
 
         self.composer_home = cfg('env', 'composer_home')
         self.php_service = cfg('env', 'php_service')
@@ -172,17 +172,29 @@ class MediaWikiUpdater:
         return branch
 
     def backup_db(self):
-        now = datetime.datetime.now()
-        backup_name = now.strftime("wiki_%Y-%m-%d_%H-%M")
-        file = self.db_dump_dir + backup_name + '.sql.gz'
-        return self.run_cmd('mysqldump' +
-                            ' -u ' + self.db_user +
-                            ' --password=' + self.db_pass +
-                            ' ' + self.db_name + ' | gzip > ' + file)
+        backup_name = "db_dump"
+        file = self.db_dump_dir + backup_name + '.tmp'
+        ret = self.run_cmd('mysqldump' +
+                           ' -u ' + self.db_user +
+                           ' --password=' + self.db_pass +
+                           ' ' + self.db_name + ' > ' + file)
+        if ret == 0:
+            os.rename(file, self.db_dump_dir + backup_name + '.sql')
+        return ret
 
-    def backup_files(self):
-        cmd = 'BUP_DIR=' + self.bup_dir + ' bup save -n ' + \
-            self.bup_idx + ' -c -q ' + self.wiki_dir + ''
+    def backup_files_borg(self):
+        cmd = f"BORG_REPO={self.borg_dir} "  \
+              f"BORG_BASE_DIR={self.borg_base} " + \
+              "borg create --compression lz4" + \
+              f" ::'{{hostname}}-{{now}}' {self.wiki_dir} " + \
+              f" {self.db_dump_dir + 'db_dump.sql'}"
+        self.info(cmd)
+        return self.run_cmd(cmd)
+
+    def borg_prune(self):
+        cmd = f"BORG_REPO={self.borg_dir} " + \
+              f"BORG_BASE_DIR={self.borg_base} " + \
+              "borg prune --keep-within 2m"
         self.info(cmd)
         return self.run_cmd(cmd)
 
@@ -264,16 +276,16 @@ class MediaWikiUpdater:
         else:
             need_update = True
 
-        step('Checking for Composer updates')
-        ret = get_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
-                      ' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
-        ret = re.findall(
-            '([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
-        if ret:
-            composer_changes = int(ret[0][1]) + int(ret[0][2])
-            if composer_changes > 1:
-                info(str(composer_changes) + ' composer changes')
-                need_update = True
+        # step('Checking for Composer updates')
+        # ret = get_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
+        #               ' composer update --no-dev --dry-run --no-progress --no-suggest -n --no-ansi')
+        # ret = re.findall(
+        #    '([0-9]+) install[s]?, ([0-9]+) update[s]?, ([0-9]+) removal[s]?', ret[1])
+        # if ret:
+        #     composer_changes = int(ret[0][1]) + int(ret[0][2])
+        #     if composer_changes > 1:
+        #         info(str(composer_changes) + ' composer changes')
+        #         need_update = True
 
         step('Checking for extension update')
         for ext in self.extensions_git:
@@ -327,9 +339,13 @@ class MediaWikiUpdater:
             fail('Database Backup failed')
 
         step('Backing up Files (without uploads)')
-        ret = self.backup_files()
+        ret = self.backup_files_borg()
         if ret:
             fail('Files Backup failed')
+
+        ret = self.borg_prune()
+        if ret:
+            fail('Pruning failed')
 
         step('Pulling new commits')
         ret = run_cmd('git pull')
@@ -344,12 +360,12 @@ class MediaWikiUpdater:
         if ret:
             fail('git submodule update failed')
 
-        step('Updating Extensions (Composer)')
-        ret = run_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
-                      ' COMPOSER_HOME=' + self.composer_home +
-                      ' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
-        if ret:
-            fail('composer update failed')
+        # step('Updating Extensions (Composer)')
+        # ret = run_cmd('https_proxy=' + self.proxy + ' http_proxy=' + self.proxy +
+        #               ' COMPOSER_HOME=' + self.composer_home +
+        #               ' composer update --no-dev -o --apcu-autoloader --no-progress --no-suggest -n --no-ansi')
+        # if ret:
+        #     fail('composer update failed')
 
         step('Updating Extensions (git)')
         ret = self.update_extensions_git()
@@ -426,9 +442,13 @@ class MediaWikiUpdater:
             fail('Database Backup failed')
 
         step('Backing up Files (with uploads)')
-        ret = self.backup_files()
+        ret = self.backup_files_borg()
         if ret:
             fail('Files Backup failed')
+
+        ret = self.borg_prune()
+        if ret:
+            fail('Pruning failed')
 
         step('Checkout new mediawiki branch')
         new_version = self.get_newest_version()
