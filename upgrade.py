@@ -30,7 +30,6 @@ import os
 import re
 import configparser
 import subprocess
-import datetime
 import argparse
 import time
 
@@ -173,8 +172,6 @@ class MediaWikiUpdater:
         return branch
 
     def backup_db(self):
-        now = datetime.datetime.now()
-        # backup_name = now.strftime("wiki_%Y-%m-%d_%H-%M")
         backup_name = "db_dump"
         file = self.db_dump_dir + backup_name + '.tmp'
         ret = self.run_cmd('mysqldump' +
@@ -188,7 +185,7 @@ class MediaWikiUpdater:
     def backup_files_borg(self):
         cmd = f"BORG_REPO={self.borg_dir} "  \
               f"BORG_BASE_DIR={self.borg_base} " + \
-              f"borg create --compression lz4"+ \
+              "borg create --compression lz4" + \
               f" ::'{{hostname}}-{{now}}' {self.wiki_dir} " + \
               f" {self.db_dump_dir + 'db_dump.sql'}"
         self.info(cmd)
@@ -197,7 +194,7 @@ class MediaWikiUpdater:
     def borg_prune(self):
         cmd = f"BORG_REPO={self.borg_dir} " + \
               f"BORG_BASE_DIR={self.borg_base} " + \
-              f"borg prune --keep-within 2m"
+              "borg prune --keep-within 2m"
         self.info(cmd)
         return self.run_cmd(cmd)
 
