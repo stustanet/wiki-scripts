@@ -1,18 +1,18 @@
 [env]
 proxy=http://proxy.stusta.de:3128
-php_service=php7.0-fpm.service
+php_service=php7.4-fpm.service
 composer_home=/var/cache/composer
 
 [wiki]
-dir=/var/www/mediawiki/
+dir=/var/www/wiki/
 extensions_git=Cargo,MobileFrontend,UploadWizard,VisualEditor
 skins_git=MinervaNeue
 check_url=https://wiki.stusta.de/Hauptseite
 
 [backup]
 db_dump_dir=/var/backup/wiki/
-bup_dir=/var/bup/
-bup_idx=wiki
-db_name=mediawiki
-db_user=backup
+borg_base=/var/wiki_borg_base
+borg_dir=/var/wiki_borg_repo
+db_name=wiki
+db_user=wiki_user
 db_pass=verysicher
