@@ -420,7 +420,7 @@ class MediaWikiUpdater:
     def do_major_upgrade(self, version=None):
         """version needs to be a branch name e.g. REL1_36"""
         if version and version not in self.get_branches():
-            fail(f'Version {version} does not exist, please check again if by git branch --list')
+            self.fail(f'Version {version} does not exist, please check again if by git branch --list')
 
         if not version:
             do_upgrade = self.check_major_upgrade()
