@@ -133,7 +133,7 @@ class MediaWikiUpdater:
         return subprocess.Popen(cmd, cwd=cwd, shell=True).wait()
 
     @staticmethod
-    def get_branches(data):
+    def get_branches_str(data):
         return re.findall('origin/(REL[0-9]_[0-9][0-9]?)\\n', data, re.S)
 
     @staticmethod
@@ -153,11 +153,17 @@ class MediaWikiUpdater:
     def get_current_version(self):
         return self.get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
-    def get_newest_version(self, stable=True):
+
+    def get_branches(self):
         process = subprocess.Popen(
             'git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
-        branches = sorted(self.get_branches(process.decode("utf-8")),
+        branches = sorted(self.get_branches_str(process.decode("utf-8")),
                           key=self.__branch_version)
+        return branches
+
+
+    def get_newest_version(self, stable=True):
+        branches = self.get_branches()
         if not branches:
             return None
         i = len(branches) - 1
@@ -412,7 +418,12 @@ class MediaWikiUpdater:
             return False
         return True
 
-    def do_major_upgrade(self):
+    def do_major_upgrade(self, version=None):
+        """version needs to be a branch name e.g. REL1_36"""
+        if version and version not in self.get_branches():
+            fail(f'Version {version} does not exist, please check again if by git branch --list')
+
+        if not version:    
         do_upgrade = self.check_major_upgrade()
         if not do_upgrade:
             return
@@ -451,7 +462,7 @@ class MediaWikiUpdater:
             fail('Pruning failed')
 
         step('Checkout new mediawiki branch')
-        new_version = self.get_newest_version()
+        new_version = version or self.get_newest_version()
         upgrade_cmd = 'git pull && git checkout ' + new_version
         ret = run_cmd(upgrade_cmd)
         if ret:
@@ -508,12 +519,14 @@ def main(args):
         '--simple', help='use simple output for non-terminal', action='store_true')
     parser.add_argument(
         '--major', help='perform a major version upgrade', action='store_true')
+    parser.add_argument(
+        '-v', '--version', help='update to this version, only supported for major updates', type=str, default=None)
     args = parser.parse_args()
 
     updater = MediaWikiUpdater(out_simple=args.simple)
 
     if args.major:
-        updater.do_major_upgrade()
+        updater.do_major_upgrade(version=args.version)
         return
 
     ret = 0
