@@ -423,9 +423,9 @@ class MediaWikiUpdater:
             fail(f'Version {version} does not exist, please check again if by git branch --list')
 
         if not version:
-        do_upgrade = self.check_major_upgrade()
-        if not do_upgrade:
-            return
+            do_upgrade = self.check_major_upgrade()
+            if not do_upgrade:
+                return
 
         info = self.info
         step = self.step
