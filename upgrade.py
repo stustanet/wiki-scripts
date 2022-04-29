@@ -5,6 +5,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2016 Julien Schmidt <js@stusta.net>
+            2021, 2022 Tobias Juelg <jobi@stusta.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -153,14 +154,12 @@ class MediaWikiUpdater:
     def get_current_version(self):
         return self.get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
-
     def get_branches(self):
         process = subprocess.Popen(
             'git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
         branches = sorted(self.get_branches_str(process.decode("utf-8")),
                           key=self.__branch_version)
         return branches
-
 
     def get_newest_version(self, stable=True):
         branches = self.get_branches()
@@ -423,7 +422,7 @@ class MediaWikiUpdater:
         if version and version not in self.get_branches():
             fail(f'Version {version} does not exist, please check again if by git branch --list')
 
-        if not version:    
+        if not version:
         do_upgrade = self.check_major_upgrade()
         if not do_upgrade:
             return
