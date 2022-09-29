@@ -2,5 +2,4 @@ mwclient
 beautifulsoup4
 ics
 pytz
-ics
 caldav

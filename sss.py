@@ -56,7 +56,7 @@ def main():
 
     # deutsche version
 
-    locale.setlocale(locale.LC_TIME, "de_DE")
+    locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
     wiki_lines = [wikify_date(x, WIKITEXT_DE) for x in appointments]
 
     page = site.Pages['Vorlage:Sprechstunden']
@@ -65,7 +65,7 @@ def main():
 
     # englische version
 
-    locale.setlocale(locale.LC_TIME, "en_US")
+    locale.setlocale(locale.LC_TIME, "en_US.UTF-8")
     wiki_lines = [wikify_date(x, WIKITEXT_EN) for x in appointments]
 
     page = site.Pages['Vorlage:Sprechstunden/en']
