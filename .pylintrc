@@ -1,8 +1,7 @@
 [MASTER]
 
 [MESSAGES CONTROL]
-disable=print-statement,
-        missing-function-docstring,
+disable=missing-function-docstring,
         missing-module-docstring,
         missing-class-docstring,
         line-too-long,
@@ -11,13 +10,10 @@ disable=print-statement,
         unused-import,
         too-many-locals,
         too-many-statements,
-        too-many-instance-arguments,
         too-few-public-methods,
         bad-indentation,
-        bad-continuation,
         import-error,
         wildcard-import,
-        no-self-use,
         duplicate-code,
         wrong-import-position,
         no-member,

@@ -123,8 +123,8 @@ class MediaWikiUpdater:
         if not cwd:
             cwd = self.wiki_dir
         sys.stdout.flush()
-        out = subprocess.Popen(cmd, cwd=cwd, shell=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+        with subprocess.Popen(cmd, cwd=cwd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+            out = proc.communicate()
         return (out[0].decode('utf-8').strip(), out[1].decode('utf-8').strip())
 
     def run_cmd(self, cmd, cwd=None):
@@ -155,8 +155,9 @@ class MediaWikiUpdater:
         return self.get_cmd('git fetch && git rev-parse --abbrev-ref HEAD')[0]
 
     def get_branches(self):
-        process = subprocess.Popen(
-            'git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE).stdout.read()
+        with subprocess.Popen('git branch -r', cwd=self.wiki_dir, shell=True, stdout=subprocess.PIPE) as proc:
+            process = proc.stdout.read()
+
         branches = sorted(self.get_branches_str(process.decode("utf-8")),
                           key=self.__branch_version)
         return branches

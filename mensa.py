@@ -48,8 +48,7 @@ def main():
     text = ''
     if speisen:
         for speise in speisen:
-            text = text + '%s: %s' % (html.escape(speise),
-                                      html.escape(speisen[speise]))
+            text = text + f'{html.escape(speise)}: {html.escape(speisen[speise])}'
             text = text + '<br />\n'
     else:
         text = text + 'Heute nix\n'

@@ -17,18 +17,18 @@
 # Added nextcloud calendar integration
 #     T. Jülg <tj@stusta.de>
 
+import configparser
+import smtplib
+import sys
 import os
 import re
-import smtplib
-import configparser
-import sys
-import caldav
 import urllib.parse
 from datetime import datetime, timedelta
 from email.utils import make_msgid, formatdate, formataddr
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+import caldav
 import mwclient
 import pytz
 from bs4 import BeautifulSoup
@@ -40,7 +40,10 @@ def event2cal(calendar):
     config.read(os.path.dirname(os.path.realpath(__file__)) + '/announce.ini')
     cfg = config.get
 
-    client = caldav.DAVClient(url=cfg('cal_dav', 'dav_url'), username=cfg('cal_dav', 'dav_user'), password=cfg('cal_dav', 'dav_password'))
+    url = cfg('cal_dav', 'dav_url')
+    username = cfg('cal_dav', 'dav_user')
+    password = cfg('cal_dav', 'dav_password')
+    client = caldav.DAVClient(url=url, username=username, password=password)
     stustanet_calendar = client.calendar(url=cfg('cal_dav', 'calendar_url'))
     stustanet_calendar.save_event(str(calendar))
 

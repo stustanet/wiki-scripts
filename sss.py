@@ -36,8 +36,8 @@ def convert_date(obj):
 def wikify_date(obj, wiki_text):
     text = (wiki_text % (obj['start'].strftime('%A, %d. %B %Y'), obj[
             'start'].strftime('%H:%M'), obj['end'].strftime('%H:%M')))
-    for key in SPECIAL:
-        text = text.replace(key, SPECIAL[key])
+    for key, value in SPECIAL.items():
+        text = text.replace(key, value)
     return text
 
 
