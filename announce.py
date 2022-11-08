@@ -17,9 +17,12 @@
 # Added nextcloud calendar integration
 #     T. Jülg <tj@stusta.de>
 
+import os
 import re
 import smtplib
+import configparser
 import sys
+import caldav
 import urllib.parse
 from datetime import datetime, timedelta
 from email.utils import make_msgid, formatdate, formataddr
@@ -31,14 +34,14 @@ import pytz
 from bs4 import BeautifulSoup
 from ics import Event, Calendar
 
-import caldav
-import cal_pw
-
 
 def event2cal(calendar):
-    url = "https://cloud.stusta.de/remote.php/dav"
-    client = caldav.DAVClient(url=url, username=cal_pw.username, password=cal_pw.password)
-    stustanet_calendar = client.calendar(url="https://cloud.stusta.de/remote.php/dav/calendars/e00007/stustanet-ev/")
+    config = configparser.RawConfigParser()
+    config.read(os.path.dirname(os.path.realpath(__file__)) + '/announce.ini')
+    cfg = config.get
+
+    client = caldav.DAVClient(url=cfg('cal_dav', 'dav_url'), username=cfg('cal_dav', 'dav_user'), password=cfg('cal_dav', 'dav_password'))
+    stustanet_calendar = client.calendar(url=cfg('cal_dav', 'calendar_url'))
     stustanet_calendar.save_event(str(calendar))
 
 
@@ -127,6 +130,7 @@ def attach_calendar(msg, calendar):
 
 # send mail to announce list
 def send_mail(subject, author, body, calendar=None):
+    print("Sending Announce Email:", subject)
     from_addr = "no-reply@stusta.mhn.de"
     from_domain = from_addr.split('@')[1]
     to_addr = "announce@lists.stusta.mhn.de"

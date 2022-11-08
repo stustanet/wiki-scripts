@@ -1,0 +1,4 @@
+[cal_dav]
+calendar_url=https://cloud.stusta.de/remote.php/dav/calendars/e00007/stustanet-ev/
+dav_user=e00007
+dav_password=nice-try
