@@ -144,7 +144,7 @@ def send_mail(subject, author, body, calendar=None):
     msg['subject'] = subject
     msg['from'] = formataddr((author, from_addr))
     msg['to'] = to_addr
-    msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.de>"
+    msg['reply-to'] = "StuStaNet e. V. Admins <admins@lists.stusta.mhn.de>"
     msg['Message-ID'] = make_msgid(domain=from_domain)
 
     msg.attach(MIMEText(body, 'plain'))
